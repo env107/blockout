@@ -9,3 +9,5 @@ test-results/
 playwright-report/
 coverage/
 *.local
+vendor/ffmpeg/win-x64/
+vendor/ffmpeg/macos-*/

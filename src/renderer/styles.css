@@ -50,6 +50,8 @@ body {
   -webkit-app-region: drag;
 }
 
+.app:not(.platform-macos) .titlebar { padding-left: 16px; }
+
 .titlebar > * { -webkit-app-region: no-drag; }
 
 .titlebar .app-name {

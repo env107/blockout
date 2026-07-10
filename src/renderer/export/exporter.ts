@@ -115,14 +115,15 @@ async function renderPassToMp4(
   canvas.height = height
   const totalFrames = Math.max(1, Math.round(shot.duration * shot.fps))
   const jobId = `job-${Date.now()}-${pass}`
+  // Subscribe before spawning so an immediate ENOENT/encoder failure cannot
+  // race past the renderer and leave the export waiting forever.
+  const closed = waitForClose(jobId)
   await window.blockout.exportBegin(jobId, outPath, {
     fps: shot.fps,
     width,
     height,
     framesExpected: totalFrames
   })
-  const closed = waitForClose(jobId)
-
   const gl = renderer.getContext()
   const pixels = new Uint8Array(width * height * 4)
   // Depth normalization range is fixed across the whole shot so the

@@ -6,7 +6,7 @@
  */
 
 import { _electron as electron, test, expect, type ElectronApplication, type Page } from '@playwright/test'
-import { mkdtempSync, existsSync, readFileSync, readdirSync, statSync } from 'fs'
+import { mkdtempSync, mkdirSync, existsSync, readFileSync, readdirSync, statSync } from 'fs'
 import { execFileSync } from 'child_process'
 import { tmpdir } from 'os'
 import { join } from 'path'
@@ -16,7 +16,9 @@ let page: Page
 let smokeDir: string
 
 test.beforeAll(async () => {
-  smokeDir = mkdtempSync(join(tmpdir(), 'blockout-smoke-'))
+  const root = process.env.BLOCKOUT_E2E_ROOT || tmpdir()
+  mkdirSync(root, { recursive: true })
+  smokeDir = mkdtempSync(join(root, 'blockout-smoke-'))
   app = await electron.launch({
     args: ['out/main/index.js'],
     env: { ...process.env, BLOCKOUT_SMOKE_DIR: smokeDir }
@@ -145,7 +147,7 @@ test('exports a real package: video + stills + prompt + metadata', async () => {
 
   // Video correctness via ffprobe: duration ≈ 5s, 24fps, correct resolution.
   const probe = JSON.parse(
-    execFileSync('ffprobe', [
+    execFileSync(process.env.BLOCKOUT_FFPROBE || 'ffprobe', [
       '-v', 'quiet', '-print_format', 'json', '-show_streams', '-show_format',
       join(pkg, refMp4)
     ]).toString()

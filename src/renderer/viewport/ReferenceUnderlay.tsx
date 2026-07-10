@@ -105,7 +105,7 @@ export function ReferenceControls(): JSX.Element | null {
       { name: 'Videos', extensions: ['mp4', 'mov', 'webm', 'm4v'] }
     ])
     if (!file) return
-    const imported = await window.blockout.importAsset(folder, file)
+    const imported = await window.blockout.importReference(folder, file)
     mutate('attach reference', (doc) => {
       for (const sc of doc.scenes) {
         const sh = sc.shots.find((x) => x.id === shot.id)

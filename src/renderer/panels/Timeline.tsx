@@ -288,7 +288,7 @@ export function Timeline(): JSX.Element {
           className="btn small"
           disabled={!anyMarks}
           onClick={() => useStore.getState().selectAllMarks()}
-          title="Select every mark on every lane (⌘A) — then ⌫ deletes them all, or shift times together in the inspector"
+          title={`Select every mark on every lane (${window.blockout.platform.primaryModifier}A) — then ⌫ deletes them all, or shift times together in the inspector`}
         >
           Select all
         </button>
