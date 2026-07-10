@@ -17,6 +17,7 @@ let page: Page
 let smokeDir: string
 let clipPath: string
 let configDir: string
+const APP_VERSION = (JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf-8')) as { version: string }).version
 
 function callBridgeGetState(): Promise<{ isError?: boolean; content?: { text?: string }[] }> {
   return new Promise((resolve, reject) => {
@@ -108,7 +109,7 @@ test('set_reference control action attaches a reference and copies the clip into
   expect(descriptor).toMatchObject({
     protocolVersion: 1,
     app: 'blockout',
-    appVersion: '5.0.0',
+    appVersion: APP_VERSION,
     pid: expect.any(Number),
     startedAt: expect.any(String),
     capabilities: expect.arrayContaining(['health', 'rpc', 'set_reference', 'motion-handoff-v1'])
