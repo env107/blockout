@@ -30,6 +30,7 @@ function Assert-RuntimeAssets([string]$resources) {
 function Test-AppLaunch([string]$executable, [string]$label, [string]$resources) {
   $process = $null
   $nodeExe = (Get-Command node -ErrorAction Stop).Source
+  $tempRoot = if ($env:RUNNER_TEMP) { $env:RUNNER_TEMP } else { [IO.Path]::GetTempPath() }
   $oldPath = $env:PATH
   $oldFfmpeg = $env:BLOCKOUT_FFMPEG
   $oldConfigDir = $env:BLOCKOUT_CONFIG_DIR
@@ -39,8 +40,8 @@ function Test-AppLaunch([string]$executable, [string]$label, [string]$resources)
   Remove-Item Env:BLOCKOUT_FFMPEG -ErrorAction SilentlyContinue
   Remove-Item Env:BLOCKOUT_CONFIG_DIR -ErrorAction SilentlyContinue
   Remove-Item Env:BLOCKOUT_CONFIG_NAMESPACE -ErrorAction SilentlyContinue
-  $env:BLOCKOUT_SMOKE_DIR = Join-Path $env:RUNNER_TEMP "OneDrive - Studio\Director's Cut\José\Packaged Smoke"
-  $env:APPDATA = Join-Path $env:RUNNER_TEMP ("blockout-default-appdata-" + [guid]::NewGuid().ToString('N'))
+  $env:BLOCKOUT_SMOKE_DIR = Join-Path $tempRoot "OneDrive - Studio\Director's Cut\José\Packaged Smoke"
+  $env:APPDATA = Join-Path $tempRoot ("blockout-default-appdata-" + [guid]::NewGuid().ToString('N'))
   $bridgeName = if ($env:BLOCKOUT_EXPECTED_MCP_ENTRY) { $env:BLOCKOUT_EXPECTED_MCP_ENTRY } else { 'blockout-mcp.mjs' }
   $bridge = Join-Path $resources (Join-Path 'mcp' $bridgeName)
   $namespace = if ($env:BLOCKOUT_EXPECTED_CONFIG_NAMESPACE) { $env:BLOCKOUT_EXPECTED_CONFIG_NAMESPACE } else { 'blockout' }
@@ -60,6 +61,17 @@ function Test-AppLaunch([string]$executable, [string]$label, [string]$resources)
     if ($descriptor.protocolVersion -ne 1 -or $descriptor.app -ne 'blockout' -or $descriptor.capabilities -notcontains 'rpc') {
       throw "$label wrote an invalid control descriptor to $descriptorPath"
     }
+    $healthReady = $false
+    $healthDeadline = (Get-Date).AddSeconds(15)
+    while (-not $healthReady -and (Get-Date) -lt $healthDeadline) {
+      try {
+        $health = Invoke-RestMethod -Uri "http://127.0.0.1:$($descriptor.port)/health" -TimeoutSec 2
+        $healthReady = $health.ok -and $health.protocolVersion -eq 1
+      } catch {
+        Start-Sleep -Milliseconds 250
+      }
+    }
+    if (-not $healthReady) { throw "$label control health endpoint did not become ready" }
     if (-not (Test-Path $bridge)) { throw "$label packaged MCP entry is missing: $bridge" }
     & $nodeExe (Join-Path $root 'scripts\verify-packaged-mcp.mjs') $bridge
     if ($LASTEXITCODE -ne 0) { throw "$label packaged MCP smoke failed with $LASTEXITCODE" }
