@@ -36,6 +36,10 @@ jobs:
       - name: Install source-build prerequisites
         run: brew install pkg-config nasm yasm cmake meson ninja
       - run: npm run prepare:ffmpeg:mac
+        env:
+          # Older FFmpeg build dependencies declare cmake_minimum_required < 3.5,
+          # which CMake 4 rejects without this compatibility floor.
+          CMAKE_POLICY_VERSION_MINIMUM: '3.5'
       - run: npm run verify:release-assets
       - name: Configure nested portability root and audited media tools
         shell: bash
