@@ -175,3 +175,5 @@ platform signing/notarization, final FFmpeg/H.264 review, and the normal full
 third-party compliance review.
 
 Created by **Sam Wasserman** — [wassermanproductions.com](https://wassermanproductions.com) · [wasserman.ai](https://wasserman.ai).
+
+Windows desktop port contributed by **Gumbii Digital** ([github.com/GumbiiDigital](https://github.com/GumbiiDigital)) — see [MODIFICATIONS.md](MODIFICATIONS.md).

@@ -5,7 +5,8 @@ original `LICENSE`, `NOTICE`, credits, and citation metadata.
 
 Frozen upstream base: `6a85105101a0504e38c330b0caae010c957b2321`.
 
-Portable desktop work added in 2026:
+Portable desktop work added in 2026, contributed by
+**Gumbii Digital** ([github.com/GumbiiDigital](https://github.com/GumbiiDigital)):
 
 - Windows 11 x64 packaging with a per-user NSIS installer and native window chrome.
 - Portable project-relative paths, Windows-safe filenames, and cross-platform UI labels.
