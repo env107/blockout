@@ -1,2 +1,2 @@
 # Unified-diff fixtures preserve source indentation and blank context lines.
-*.patch -whitespace
+*.patch text eol=lf -whitespace
