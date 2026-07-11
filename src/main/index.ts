@@ -205,6 +205,8 @@ ipcMain.handle('shell:openExternal', async (_e, url: string) => {
 
 interface ExportJob {
   ffmpeg: ChildProcess
+  /** Attached immediately after spawn so cancellation can await the real close event. */
+  closed: Promise<void>
   outPath: string
   framesExpected: number
   framesReceived: number
@@ -243,12 +245,14 @@ ipcMain.handle(
       outPath
     ]
     const child = spawn(ffmpegPath, args, { stdio: ['pipe', 'ignore', 'pipe'], windowsHide: true })
+    const closed = new Promise<void>((resolve) => child.once('close', () => resolve()))
     let stderrTail = ''
     child.stderr?.on('data', (d: Buffer) => {
       stderrTail = (stderrTail + d.toString()).slice(-4000)
     })
     const job: ExportJob = {
       ffmpeg: child,
+      closed,
       outPath,
       framesExpected: opts.framesExpected,
       framesReceived: 0,
@@ -315,6 +319,7 @@ ipcMain.handle('export:cancel', async (_e, jobId: string) => {
   job.dead = true
   job.deadReason = 'cancelled'
   await terminateProcessTree(job.ffmpeg)
+  await job.closed
   await rm(job.outPath, { force: true })
   return true
 })

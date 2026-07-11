@@ -27,27 +27,56 @@ function Assert-RuntimeAssets([string]$resources) {
   }
 }
 
-function Test-AppLaunch([string]$executable, [string]$label) {
+function Test-AppLaunch([string]$executable, [string]$label, [string]$resources) {
+  $process = $null
+  $nodeExe = (Get-Command node -ErrorAction Stop).Source
   $oldPath = $env:PATH
   $oldFfmpeg = $env:BLOCKOUT_FFMPEG
+  $oldConfigDir = $env:BLOCKOUT_CONFIG_DIR
+  $oldConfigNamespace = $env:BLOCKOUT_CONFIG_NAMESPACE
+  $oldAppData = $env:APPDATA
   $env:PATH = "$env:SystemRoot\System32"
   Remove-Item Env:BLOCKOUT_FFMPEG -ErrorAction SilentlyContinue
+  Remove-Item Env:BLOCKOUT_CONFIG_DIR -ErrorAction SilentlyContinue
+  Remove-Item Env:BLOCKOUT_CONFIG_NAMESPACE -ErrorAction SilentlyContinue
   $env:BLOCKOUT_SMOKE_DIR = Join-Path $env:RUNNER_TEMP "OneDrive - Studio\Director's Cut\José\Packaged Smoke"
-  $env:BLOCKOUT_CONFIG_DIR = Join-Path $env:RUNNER_TEMP 'blockout-package-config'
+  $env:APPDATA = Join-Path $env:RUNNER_TEMP ("blockout-default-appdata-" + [guid]::NewGuid().ToString('N'))
+  $communityBridge = Join-Path $resources 'mcp\blockout-mcp-community.mjs'
+  $genericBridge = Join-Path $resources 'mcp\blockout-mcp.mjs'
+  $bridge = if (Test-Path $communityBridge) { $communityBridge } else { $genericBridge }
+  $namespace = if (Test-Path $communityBridge) { 'GumbiiDigital\BlockoutCommunity' } else { 'blockout' }
+  $descriptorPath = Join-Path (Join-Path $env:APPDATA $namespace) 'control.json'
   New-Item -ItemType Directory -Force -Path $env:BLOCKOUT_SMOKE_DIR | Out-Null
   try {
     $process = Start-Process -FilePath $executable -PassThru
-    Start-Sleep -Seconds 6
+    $deadline = (Get-Date).AddSeconds(20)
+    while (-not (Test-Path $descriptorPath) -and (Get-Date) -lt $deadline) {
+      Start-Sleep -Milliseconds 250
+    }
     if ($process.HasExited) { throw "$label exited during launch smoke with code $($process.ExitCode)" }
+    if (-not (Test-Path $descriptorPath)) {
+      throw "$label did not write its descriptor to the default namespace: $descriptorPath"
+    }
+    $descriptor = Get-Content $descriptorPath -Raw | ConvertFrom-Json
+    if ($descriptor.protocolVersion -ne 1 -or $descriptor.app -ne 'blockout' -or $descriptor.capabilities -notcontains 'rpc') {
+      throw "$label wrote an invalid control descriptor to $descriptorPath"
+    }
+    if (-not (Test-Path $bridge)) { throw "$label packaged MCP entry is missing: $bridge" }
+    & $nodeExe (Join-Path $root 'scripts\verify-packaged-mcp.mjs') $bridge
+    if ($LASTEXITCODE -ne 0) { throw "$label packaged MCP smoke failed with $LASTEXITCODE" }
     & taskkill.exe /PID $process.Id /T /F | Out-Null
   } finally {
+    if ($process -and -not $process.HasExited) { & taskkill.exe /PID $process.Id /T /F | Out-Null }
     $env:PATH = $oldPath
     if ($null -ne $oldFfmpeg) { $env:BLOCKOUT_FFMPEG = $oldFfmpeg }
+    if ($null -ne $oldConfigDir) { $env:BLOCKOUT_CONFIG_DIR = $oldConfigDir } else { Remove-Item Env:BLOCKOUT_CONFIG_DIR -ErrorAction SilentlyContinue }
+    if ($null -ne $oldConfigNamespace) { $env:BLOCKOUT_CONFIG_NAMESPACE = $oldConfigNamespace } else { Remove-Item Env:BLOCKOUT_CONFIG_NAMESPACE -ErrorAction SilentlyContinue }
+    $env:APPDATA = $oldAppData
   }
 }
 
 Assert-RuntimeAssets (Join-Path $unpacked 'resources')
-Test-AppLaunch $unpackedExe.FullName 'win-unpacked app'
+Test-AppLaunch $unpackedExe.FullName 'win-unpacked app' (Join-Path $unpacked 'resources')
 
 $installer = Get-ChildItem $release -Filter '*.exe' -File |
   Where-Object { $_.Name -notmatch 'uninstall' } | Sort-Object Length -Descending | Select-Object -First 1
@@ -66,7 +95,7 @@ $startMenuShortcut = Get-ChildItem (Join-Path $env:APPDATA 'Microsoft\Windows\St
 $desktopShortcut = Get-ChildItem ([Environment]::GetFolderPath('Desktop')) -Filter 'Blockout*.lnk' -File -ErrorAction SilentlyContinue | Select-Object -First 1
 if (-not $startMenuShortcut) { throw 'Start Menu shortcut was not created' }
 if (-not $desktopShortcut) { throw 'Desktop shortcut was not created' }
-Test-AppLaunch $installedExe.FullName 'installed app'
+Test-AppLaunch $installedExe.FullName 'installed app' (Join-Path $installDir 'resources')
 
 # Uninstall removes program files/shortcuts but deliberately preserves user data.
 $dataRoot = Join-Path $env:APPDATA 'blockout'

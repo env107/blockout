@@ -14,7 +14,7 @@ import { readFile, mkdir, rm } from 'fs/promises'
 import { join, extname } from 'path'
 import { ASSET_CATALOG } from '../engine/assets'
 import { resolveConfigPath } from '../shared/config-paths'
-import { resolveFfmpeg } from './ffmpeg'
+import { friendlyFfmpegError, resolveFfmpeg } from './ffmpeg'
 
 const VIDEO_EXTS = new Set(['.mp4', '.mov', '.webm', '.m4v', '.avi'])
 const MEDIA_TYPES: Record<string, string> = {
@@ -121,11 +121,17 @@ async function extractFrame(videoPath: string): Promise<string> {
   const out = join(dir, `frame-${Date.now()}.jpg`)
   const ffmpegPath = await resolveFfmpeg()
   await new Promise<void>((resolve, reject) => {
-    const child = spawn(ffmpegPath, ['-y', '-ss', '1', '-i', videoPath, '-frames:v', '1', '-q:v', '3', out])
-    let err = ''
-    child.stderr?.on('data', (d: Buffer) => (err = (err + d.toString()).slice(-2000)))
-    child.on('close', (code) => (code === 0 ? resolve() : reject(new Error(`frame extraction failed: ${err.slice(-300)}`))))
-    child.on('error', reject)
+    const child = spawn(ffmpegPath, ['-y', '-ss', '1', '-i', videoPath, '-frames:v', '1', '-q:v', '3', out], {
+      windowsHide: true
+    })
+    child.stderr?.resume()
+    child.once('close', (code) => {
+      if (code === 0) resolve()
+      else reject(new Error('FFmpeg could not extract a frame from the reference video. Check that the file is readable and uses a supported codec.'))
+    })
+    child.once('error', (error) => {
+      reject(new Error(`Could not analyze the reference video: ${friendlyFfmpegError(error)}`))
+    })
   })
   return out
 }

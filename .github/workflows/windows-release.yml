@@ -45,7 +45,13 @@ jobs:
       - name: Write SHA256SUMS
         shell: pwsh
         run: |
-          Get-ChildItem release -File -Recurse | Sort-Object FullName | ForEach-Object {
+          $distributed = @(
+            Get-ChildItem release -Filter '*.exe' -File
+            Get-ChildItem release -Filter '*.spdx.json' -File
+            Get-ChildItem release -Filter '*.cyclonedx.json' -File
+            Get-ChildItem release/ffmpeg-corresponding-source -File -Recurse
+          )
+          $distributed | Sort-Object FullName | ForEach-Object {
             $hash = (Get-FileHash -Algorithm SHA256 $_.FullName).Hash.ToLower()
             $relative = [System.IO.Path]::GetRelativePath((Resolve-Path release), $_.FullName).Replace('\\', '/')
             "$hash *$relative"
