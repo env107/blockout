@@ -18,7 +18,7 @@ jobs:
         include:
           - os: macos-13
             arch: x64
-          - os: macos-14-xlarge
+          - os: macos-14
             arch: arm64
     runs-on: ${{ matrix.os }}
     steps:
@@ -51,6 +51,9 @@ jobs:
       - run: npm run build
       - run: npx playwright test tests/e2e/smoke.spec.ts tests/e2e/cancel-export.spec.ts tests/e2e/set-reference.spec.ts
       - run: npm run package:mac
+      - name: Archive audited FFmpeg pair
+        shell: bash
+        run: tar -czf release/blockout-ffmpeg-macos-${{ matrix.arch }}.tar.gz -C vendor/ffmpeg macos-${{ matrix.arch }}
       - run: npm run sbom
       - run: npm run fetch:ffmpeg-source
       - name: Write SHA256SUMS
@@ -68,6 +71,7 @@ jobs:
           if-no-files-found: error
           path: |
             release/*.dmg
+            release/blockout-ffmpeg-macos-*.tar.gz
             release/SHA256SUMS
             release/*.spdx.json
             release/*.cyclonedx.json
