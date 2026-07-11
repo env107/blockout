@@ -26,5 +26,7 @@ execFileSync(process.execPath, [
   '--mac',
   `--${process.arch}`,
   '--config',
-  'electron-builder.yml'
+  'electron-builder.yml',
+  '--publish',
+  'never'
 ], { cwd: root, env: process.env, stdio: 'inherit' })

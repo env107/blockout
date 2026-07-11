@@ -44,6 +44,33 @@ if (await existingBuildIsValid()) {
   process.exit(0)
 }
 
+const buildFromSource = process.argv.includes('--build-from-source')
+const prebuilt = asset.prebuilt?.[process.arch]
+
+if (prebuilt && !buildFromSource) {
+  const vendorDir = resolve(root, 'vendor', 'ffmpeg')
+  const work = await mkdtemp(join(tmpdir(), 'blockout-ffmpeg-macos-prebuilt-'))
+  try {
+    const archivePath = resolve(work, prebuilt.name)
+    execFileSync('curl', [
+      '-fL', '--retry', '3', '--user-agent', 'Blockout-release-builder/1.0',
+      '-o', archivePath, prebuilt.url
+    ], { stdio: 'inherit' })
+    const actual = await hashFile(archivePath)
+    if (actual !== prebuilt.sha256) throw new Error(`${prebuilt.name} checksum mismatch: ${actual}`)
+    await mkdir(vendorDir, { recursive: true })
+    await rm(destination, { recursive: true, force: true })
+    execFileSync('tar', ['-xzf', archivePath, '-C', vendorDir])
+    if (!(await existingBuildIsValid())) {
+      throw new Error(`${prebuilt.name} failed provenance or checksum validation against the pinned manifest`)
+    }
+    console.log(`Downloaded audited macOS FFmpeg assets into ${destination}`)
+    process.exit(0)
+  } finally {
+    await rm(work, { recursive: true, force: true })
+  }
+}
+
 const patchPath = resolve(root, asset.buildPatch.path)
 if (await hashFile(patchPath) !== asset.buildPatch.sha256) {
   throw new Error('macOS FFmpeg build patch checksum mismatch')

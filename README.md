@@ -109,8 +109,9 @@ Requirements for source builds: **Node 22+**. Development builds resolve a
 checksum-pinned FFmpeg executable and also support the `BLOCKOUT_FFMPEG`
 override. Windows packaging downloads, verifies, and audits the exact BtbN GPL
 pair before building. The rejected nonfree static package is not a dependency.
-macOS packaging builds the same pinned FFmpeg commit from verified sources and
-an audited patch, natively per architecture.
+macOS packaging downloads and verifies the same pinned, audited FFmpeg pair
+automatically. To rebuild it from verified sources and the audited patch
+instead, run `npm run prepare:ffmpeg:mac -- --build-from-source`.
 
 Current release artifacts are unsigned. On macOS, right-click → Open bypasses
 Gatekeeper. When a Windows prerelease is legally cleared and published, use
@@ -150,7 +151,7 @@ and `add_entity` through `spawn_sequence`, `apply_camera_move`, and `screenshot`
 | `npm run typecheck` / `npm run lint` | Strict TS + ESLint |
 | `npm test` | Engine unit tests (Vitest) |
 | `npm run smoke` | Build + full end-to-end smoke: boots the app, stages a scene, exports a real package, verifies it with ffprobe, checks byte-determinism |
-| `npm run package:mac` | Build and audit a native macOS FFmpeg pair, then the current-architecture DMG |
+| `npm run package:mac` | Download and audit the pinned macOS FFmpeg pair, then build the current-architecture DMG |
 | `npm run package:win` | Build a Windows 11 x64 per-user NSIS installer (`release/`; run on Windows) |
 | `npm run verify:assets` / `npm run sbom` | Verify pinned runtime assets / generate SPDX and CycloneDX SBOMs |
 

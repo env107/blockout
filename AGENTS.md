@@ -19,7 +19,8 @@ npm run typecheck      # strict TS, two projects (renderer+engine, main+e2e)
 npm run lint           # ESLint (zero warnings allowed on main)
 npm test               # Vitest engine unit tests (fast, no GPU)
 npm run smoke          # build + Playwright end-to-end: real export, ffprobe-verified
-npm run package:mac    # source-build/audit FFmpeg, then current-architecture macOS DMG
+npm run package:mac    # download+audit pinned FFmpeg pair, then current-architecture macOS DMG
+                       # (add: npm run prepare:ffmpeg:mac -- --build-from-source to rebuild from source)
 npm run package:win    # Windows x64 NSIS installer (run after npm ci on Windows)
 ```
 
