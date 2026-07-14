@@ -165,6 +165,15 @@ and `add_entity` through `spawn_sequence`, `apply_camera_move`, and `screenshot`
 
 See [docs/DESIGN.md](docs/DESIGN.md) (product + architecture), [docs/ROADMAP.md](docs/ROADMAP.md) (build plan + QA program), and [AGENTS.md](AGENTS.md) (how AI agents should build / run / modify this app). The deterministic core lives in `src/engine/` — pure TypeScript, no DOM, fully unit-tested; `state(t)` is a pure function shared by playback, video export, stills, and glTF baking.
 
+## Support
+
+A few people asked if they could send tips to support my work developing open source tools. So I set up an optional way in case anyone wants to.
+
+No pressure at all. Using the apps, sharing them, starring the repositories, and contributing code all help too. Thank you.
+
+- [GitHub Sponsors](https://github.com/sponsors/wassermanproductions)
+- [Ko-fi](https://ko-fi.com/samwasserman)
+
 ## License & credits
 
 **Apache License 2.0** — see [LICENSE](LICENSE). Free to use, modify, fork, and build on, commercially or otherwise.
