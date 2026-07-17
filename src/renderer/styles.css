@@ -94,6 +94,35 @@ body {
   color: var(--accent-text);
 }
 
+.locale-switch {
+  display: flex;
+  gap: 2px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 2px;
+  margin-left: 8px;
+}
+
+.locale-switch button {
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-weight: 600;
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.locale-switch button:hover { color: var(--text); }
+
+.locale-switch button.active {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
 .main {
   display: grid;
   grid-template-columns: 200px 1fr 264px;

@@ -121,6 +121,14 @@ claude mcp add blockout -- node /ABSOLUTE/PATH/TO/blockout/mcp/blockout-mcp.mjs
 3. `add_entity` with `{ "assetId": "person.man", "x": 0, "z": -3, "label": "HERO" }`.
 4. `screenshot` — confirm the placement in the viewport.
 
+## Internationalization (i18n)
+
+- **Locales:** `en` and `zh-CN` (default). UI strings live in `src/shared/i18n/locales/`; engine display names are built from engine catalogs plus `zh-engine-overrides.ts` (engine source stays English).
+- **Persistence:** `~/.config/blockout/preferences.json` (Windows: `%APPDATA%\blockout\preferences.json`) stores `locale`. Title-bar **中文 | EN** toggles it.
+- **Override:** `BLOCKOUT_LOCALE=en|zh-CN` env wins over preferences (use `BLOCKOUT_LOCALE=en` in Playwright e2e so selectors match English copy).
+- **Verification:** `npm run verify:i18n` checks en/zh key symmetry, engine label coverage, and code-referenced keys. It runs before `vitest` via `npm test`.
+- **Export prompts:** AI export prompts stay English regardless of UI locale.
+
 ## Gotchas
 
 - `ffmpeg` resolution order: `BLOCKOUT_FFMPEG` env → packaged BtbN executable on Windows → platform candidates → `ffmpeg`/`ffmpeg.exe` on PATH. The rejected nonfree static package is not a dependency.

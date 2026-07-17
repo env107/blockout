@@ -7,7 +7,7 @@ import { join } from 'path'
 test('50-entity scene holds 60fps', async () => {
   test.setTimeout(120_000)
   const dir = mkdtempSync(join(tmpdir(), 'blockout-perf-'))
-  const app = await electron.launch({ args: ['out/main/index.js'], env: { ...process.env, BLOCKOUT_SMOKE_DIR: dir } })
+  const app = await electron.launch({ args: ['out/main/index.js'], env: { ...process.env, BLOCKOUT_LOCALE: 'en', BLOCKOUT_SMOKE_DIR: dir } })
   const page = await app.firstWindow()
   await page.waitForLoadState('domcontentloaded')
   await page.getByRole('button', { name: 'New Project' }).click()

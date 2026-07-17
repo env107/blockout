@@ -5,9 +5,11 @@
  */
 
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ASSET_CATALOG, type AssetSpec } from '@engine/assets'
 import type { EntityCategory } from '@engine/types'
 import { sequenceStyles, type SequenceType } from '@engine/sequences'
+import { assetLabel, assetCategoryLabel } from '../../shared/i18n/engine-labels'
 import { useStore } from '../store'
 import { populateFromReference } from '../ai/populate'
 
@@ -24,6 +26,7 @@ interface PresetInfo {
  * project — applying stages a fresh copy, never touching the original.
  */
 function StagePresets(): JSX.Element {
+  const { t } = useTranslation()
   const [presets, setPresets] = useState<PresetInfo[]>([])
   const [naming, setNaming] = useState(false)
   const [name, setName] = useState('')
@@ -54,17 +57,16 @@ function StagePresets(): JSX.Element {
 
   const onDelete = async (p: PresetInfo): Promise<void> => {
     await window.blockout.presetDelete(p.id)
-    toast(`Preset "${p.name}" deleted.`, 'info')
+    toast(t('toasts.presetDeleted', { name: p.name }), 'info')
     await refresh()
   }
 
   return (
     <div className="panel-section">
-      <div className="panel-title">Stage Presets</div>
+      <div className="panel-title">{t('ui.library.stagePresets.title')}</div>
       {presets.length === 0 && !naming && (
         <div className="empty-hint" style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>
-          Save a staging you'll reuse — a dinner scene, a driving setup — and
-          start from it in any project.
+          {t('ui.library.stagePresets.emptyHint')}
         </div>
       )}
       {presets.map((p) => (
@@ -72,17 +74,23 @@ function StagePresets(): JSX.Element {
           key={p.id}
           style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}
         >
-          <span style={{ flex: 1, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`${p.entityCount} items · saved ${new Date(p.savedAt).toLocaleDateString()}`}>
+          <span
+            style={{ flex: 1, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+            title={t('ui.library.stagePresets.presetMeta', {
+              count: p.entityCount,
+              date: new Date(p.savedAt).toLocaleDateString()
+            })}
+          >
             {p.name}
           </span>
           <button
             className="btn small"
             onClick={() => void applyStagePreset(p.id)}
-            title="Stage this preset as a NEW scene — the preset itself stays untouched"
+            title={t('ui.library.stagePresets.stageTitle')}
           >
-            Stage
+            {t('ui.library.stagePresets.stage')}
           </button>
-          <button className="btn small" onClick={() => void onDelete(p)} title="Delete this preset">
+          <button className="btn small" onClick={() => void onDelete(p)} title={t('ui.library.stagePresets.deleteTitle')}>
             ✕
           </button>
         </div>
@@ -92,7 +100,7 @@ function StagePresets(): JSX.Element {
           <input
             type="text"
             autoFocus
-            placeholder="Preset name… e.g. Dinner scene"
+            placeholder={t('ui.library.stagePresets.namePlaceholder')}
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => {
@@ -102,7 +110,7 @@ function StagePresets(): JSX.Element {
             style={{ flex: 1 }}
           />
           <button className="btn small primary" onClick={() => void onSave()}>
-            Save
+            {t('ui.library.stagePresets.save')}
           </button>
         </div>
       ) : (
@@ -111,9 +119,9 @@ function StagePresets(): JSX.Element {
           style={{ width: '100%', marginTop: 6 }}
           disabled={(scene?.entities.length ?? 0) === 0}
           onClick={() => setNaming(true)}
-          title="Save this scene's staging (set, characters, blocking) as a reusable preset available in every project"
+          title={t('ui.library.stagePresets.saveCurrentTitle')}
         >
-          ＋ Save current staging as preset
+          {t('ui.library.stagePresets.saveCurrent')}
         </button>
       )}
     </div>
@@ -126,6 +134,7 @@ function StagePresets(): JSX.Element {
  * staged where the viewport is looking.
  */
 function Sequences(): JSX.Element {
+  const { t } = useTranslation()
   const [type, setType] = useState<SequenceType>('dance')
   const [count, setCount] = useState(12)
   const [style, setStyle] = useState('mixed')
@@ -135,29 +144,24 @@ function Sequences(): JSX.Element {
   const styles = sequenceStyles(type)
   const activeStyle = styles.some((s) => s.id === style) ? style : styles[0]!.id
 
-  const TYPE_LABELS: { id: SequenceType; label: string }[] = [
-    { id: 'dance', label: '💃 Dance number' },
-    { id: 'fight', label: '🥊 Fight' },
-    { id: 'footChase', label: '🏃 Foot chase' },
-    { id: 'carChase', label: '🚗 Car chase' }
-  ]
+  const TYPE_IDS: SequenceType[] = ['dance', 'fight', 'footChase', 'carChase']
 
   return (
     <div className="panel-section">
-      <div className="panel-title">Sequences</div>
+      <div className="panel-title">{t('ui.library.sequences.title')}</div>
       <div className="field">
-        <label>Type</label>
+        <label>{t('ui.library.sequences.type')}</label>
         <select value={type} onChange={(e) => setType(e.target.value as SequenceType)}>
-          {TYPE_LABELS.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.label}
+          {TYPE_IDS.map((id) => (
+            <option key={id} value={id}>
+              {t(`ui.library.sequences.types.${id}`)}
             </option>
           ))}
         </select>
       </div>
       <div className="field-row">
         <div className="field" style={{ flex: 1 }}>
-          <label>Performers</label>
+          <label>{t('ui.library.sequences.performers')}</label>
           <input
             type="number"
             min={2}
@@ -170,7 +174,7 @@ function Sequences(): JSX.Element {
           />
         </div>
         <div className="field" style={{ flex: 2 }}>
-          <label>Style</label>
+          <label>{t('ui.library.sequences.style')}</label>
           <select value={activeStyle} onChange={(e) => setStyle(e.target.value)}>
             {styles.map((s) => (
               <option key={s.id} value={s.id}>
@@ -186,9 +190,11 @@ function Sequences(): JSX.Element {
         onClick={() =>
           setPlacingSequence(placingSequence ? null : { type, count, style: activeStyle })
         }
-        title="Arms placement — then click the floor exactly where you want the group. It stages there, facing the camera. Esc cancels. One undo step; every performer stays individually editable."
+        title={t('ui.library.sequences.stageTitle')}
       >
-        {placingSequence ? '⟳ Click the floor to place… (Esc cancels)' : `🎬 Stage ${count} performers`}
+        {placingSequence
+          ? t('ui.library.sequences.placing')
+          : t('ui.library.sequences.stagePerformers', { count })}
       </button>
     </div>
   )
@@ -418,18 +424,19 @@ function thumbFor(id: string): string {
   return THUMBS[id] ?? '📦'
 }
 
-/** Fixed display order of categories with human-readable titles. */
-const CATEGORY_ORDER: { key: EntityCategory; title: string }[] = [
-  { key: 'people', title: 'People' },
-  { key: 'animals', title: 'Animals' },
-  { key: 'vehicles', title: 'Vehicles' },
-  { key: 'furniture', title: 'Furniture' },
-  { key: 'props', title: 'Props' },
-  { key: 'environment', title: 'Environments' },
-  { key: 'primitives', title: 'Primitives' }
+/** Fixed display order of categories. */
+const CATEGORY_ORDER: EntityCategory[] = [
+  'people',
+  'animals',
+  'vehicles',
+  'furniture',
+  'props',
+  'environment',
+  'primitives'
 ]
 
 export function Library(): JSX.Element {
+  const { t } = useTranslation()
   const [query, setQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<EntityCategory | 'all'>('all')
   const [collapsed, setCollapsed] = useState<Partial<Record<EntityCategory, boolean>>>({})
@@ -444,15 +451,15 @@ export function Library(): JSX.Element {
     const q = query.trim().toLowerCase()
     const matches = (a: AssetSpec): boolean =>
       q === '' ||
-      a.name.toLowerCase().includes(q) ||
-      a.category.toLowerCase().includes(q)
-    return CATEGORY_ORDER.filter(
-      ({ key }) => categoryFilter === 'all' || key === categoryFilter
-    ).map(({ key, title }) => ({
-      key,
-      title,
-      items: ASSET_CATALOG.filter((a) => a.category === key && matches(a))
-    })).filter((g) => g.items.length > 0)
+      assetLabel(a).toLowerCase().includes(q) ||
+      assetCategoryLabel(a.category).toLowerCase().includes(q)
+    return CATEGORY_ORDER.filter((key) => categoryFilter === 'all' || key === categoryFilter).map(
+      (key) => ({
+        key,
+        title: assetCategoryLabel(key),
+        items: ASSET_CATALOG.filter((a) => a.category === key && matches(a))
+      })
+    ).filter((g) => g.items.length > 0)
   }, [query, categoryFilter])
 
   const toggleCollapsed = (key: EntityCategory): void =>
@@ -469,7 +476,7 @@ export function Library(): JSX.Element {
     ])
     if (!path) return
     if (!projectFolder) {
-      toast('Open or save a project before importing models.', 'error')
+      toast(t('toasts.openProjectBeforeImport'), 'error')
       return
     }
     try {
@@ -484,9 +491,9 @@ export function Library(): JSX.Element {
           }
         }
       })
-      toast(`Imported ${result.name}`, 'success')
+      toast(t('toasts.importedModel', { name: result.name }), 'success')
     } catch (e) {
-      toast(`Import failed: ${(e as Error).message}`, 'error')
+      toast(t('toasts.importFailed', { message: (e as Error).message }), 'error')
     }
   }
 
@@ -498,7 +505,7 @@ export function Library(): JSX.Element {
       <div className="library-search">
         <input
           type="text"
-          placeholder="Search assets…"
+          placeholder={t('ui.library.searchPlaceholder')}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
@@ -510,26 +517,26 @@ export function Library(): JSX.Element {
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value as EntityCategory | 'all')}
-            title="Show one category at a time"
+            title={t('ui.library.showOneCategoryTitle')}
           >
-            <option value="all">All categories</option>
-            {CATEGORY_ORDER.map((c) => (
-              <option key={c.key} value={c.key}>
-                {c.title}
+            <option value="all">{t('ui.library.allCategories')}</option>
+            {CATEGORY_ORDER.map((key) => (
+              <option key={key} value={key}>
+                {assetCategoryLabel(key)}
               </option>
             ))}
           </select>
           <select
             value={placingAssetId && ASSET_CATALOG.some((a) => a.id === placingAssetId) ? placingAssetId : ''}
             onChange={(e) => setPlacingAsset(e.target.value || null)}
-            title="Pick from the full list — then click the floor to place it"
+            title={t('ui.library.placeFromListTitle')}
           >
-            <option value="">Place from list…</option>
-            {CATEGORY_ORDER.map((c) => (
-              <optgroup key={c.key} label={c.title}>
-                {ASSET_CATALOG.filter((a) => a.category === c.key).map((a) => (
+            <option value="">{t('ui.library.placeFromList')}</option>
+            {CATEGORY_ORDER.map((key) => (
+              <optgroup key={key} label={assetCategoryLabel(key)}>
+                {ASSET_CATALOG.filter((a) => a.category === key).map((a) => (
                   <option key={a.id} value={a.id}>
-                    {thumbFor(a.id)} {a.name}
+                    {thumbFor(a.id)} {assetLabel(a)}
                   </option>
                 ))}
               </optgroup>
@@ -544,7 +551,7 @@ export function Library(): JSX.Element {
             className="panel-title"
             style={{ cursor: 'pointer', userSelect: 'none', display: 'flex', justifyContent: 'space-between' }}
             onClick={() => toggleCollapsed(group.key)}
-            title={collapsed[group.key] ? 'Expand' : 'Collapse'}
+            title={collapsed[group.key] ? t('ui.library.expand') : t('ui.library.collapse')}
           >
             <span>
               {group.title} <span style={{ opacity: 0.5 }}>({group.items.length})</span>
@@ -560,7 +567,7 @@ export function Library(): JSX.Element {
                   onClick={() => onPick(asset.id)}
                 >
                   <span className="thumb">{thumbFor(asset.id)}</span>
-                  <span className="name">{asset.name}</span>
+                  <span className="name">{assetLabel(asset)}</span>
                 </div>
               ))}
             </div>
@@ -573,12 +580,12 @@ export function Library(): JSX.Element {
           className="btn primary"
           style={{ width: '100%', marginBottom: 8 }}
           onClick={() => void populateFromReference()}
-          title="Give Claude a reference photo or video frame — it stages the scene to match: people, furniture, poses, lighting, and a camera to match the framing"
+          title={t('ui.library.populateFromReferenceTitle')}
         >
-          ✨ Populate from reference…
+          {t('ui.library.populateFromReference')}
         </button>
         <button className="btn" style={{ width: '100%' }} onClick={() => void onImport()}>
-          Import 3D Model…
+          {t('ui.library.importModel')}
         </button>
       </div>
     </>

@@ -16,6 +16,7 @@ test.beforeAll(async () => {
     args: ['out/main/index.js'],
     env: {
       ...process.env,
+      BLOCKOUT_LOCALE: 'en',
       BLOCKOUT_SMOKE_DIR: smokeDir,
       BLOCKOUT_CONFIG_DIR: join(smokeDir, 'config')
     }

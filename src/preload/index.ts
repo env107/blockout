@@ -61,6 +61,7 @@ export interface BlockoutAPI {
   ): () => void
   controlResult(id: string, result: { ok: boolean; data?: unknown; error?: string }): void
   /** Analyze a reference image/video with Claude and return a scene layout. */
+  /** Analyze a reference image/video with Claude and return a scene layout. */
   analyzeReference(filePath: string): Promise<
     | {
         ok: true
@@ -82,6 +83,8 @@ export interface BlockoutAPI {
       }
     | { ok: false; error: string }
   >
+  getLocale(): Promise<'en' | 'zh-CN'>
+  setLocale(locale: 'en' | 'zh-CN'): Promise<'en' | 'zh-CN'>
 }
 
 const platform: PlatformInfo = {
@@ -128,7 +131,9 @@ const api: BlockoutAPI = {
   },
   controlResult: (id, result) => ipcRenderer.send('control:result', id, result),
   versions: () => ipcRenderer.invoke('app:versions'),
-  analyzeReference: (filePath) => ipcRenderer.invoke('ai:analyzeReference', filePath)
+  analyzeReference: (filePath) => ipcRenderer.invoke('ai:analyzeReference', filePath),
+  getLocale: () => ipcRenderer.invoke('preferences:getLocale'),
+  setLocale: (locale) => ipcRenderer.invoke('preferences:setLocale', locale)
 }
 
 contextBridge.exposeInMainWorld('blockout', api)

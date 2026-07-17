@@ -15,6 +15,14 @@ import { friendlyFfmpegError, resolveFfmpeg, terminateProcessTree } from './ffmp
 import { sanitizeName } from '../engine/strings'
 import { ffmpegConcatEntry, normalizeProjectRelativePath } from '../shared/portable-paths'
 import { DISTRIBUTION } from '../shared/distribution'
+import { initI18n, setLocale, t } from '../shared/i18n'
+import {
+  readPreferences,
+  resolveLocaleFromEnv,
+  writePreferences,
+  type UserPreferences
+} from '../shared/i18n/preferences'
+import { type LocaleId, resolveLocale } from '../shared/i18n/types'
 // Inlined at build time — app.getVersion() reports Electron's own version
 // when launched unpackaged (e2e runs `electron out/main/index.js`).
 import { version as APP_VERSION } from '../../package.json'
@@ -22,6 +30,14 @@ import { version as APP_VERSION } from '../../package.json'
 const isDev = !!process.env.ELECTRON_RENDERER_URL
 
 let mainWindow: BrowserWindow | null = null
+let currentLocale: LocaleId = resolveLocaleFromEnv()
+
+async function resolveStartupLocale(): Promise<LocaleId> {
+  const forced = process.env.BLOCKOUT_LOCALE?.trim()
+  if (forced) return resolveLocale(forced)
+  const prefs = await readPreferences()
+  return prefs.locale
+}
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -53,11 +69,15 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
-  if (process.platform !== 'darwin') Menu.setApplicationMenu(null)
-  if (process.platform === 'win32') app.setAppUserModelId(DISTRIBUTION.appId)
-  createWindow()
-  registerPresetsIpc()
-  void startControlServer(() => mainWindow)
+  void (async () => {
+    currentLocale = await resolveStartupLocale()
+    await initI18n(currentLocale)
+    if (process.platform !== 'darwin') Menu.setApplicationMenu(null)
+    if (process.platform === 'win32') app.setAppUserModelId(DISTRIBUTION.appId)
+    createWindow()
+    registerPresetsIpc()
+    void startControlServer(() => mainWindow)
+  })()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
@@ -69,6 +89,16 @@ app.on('window-all-closed', () => {
 
 /* --------------------------------- IPC ---------------------------------- */
 
+ipcMain.handle('preferences:getLocale', () => currentLocale)
+
+ipcMain.handle('preferences:setLocale', async (_e, locale: string) => {
+  const next = resolveLocale(locale)
+  currentLocale = next
+  await setLocale(next)
+  await writePreferences({ locale: next } satisfies UserPreferences)
+  return next
+})
+
 ipcMain.handle('dialog:newProject', async () => {
   // Smoke-test hook: bypass the native dialog so CI can drive the app.
   if (process.env.BLOCKOUT_SMOKE_DIR) {
@@ -79,9 +109,9 @@ ipcMain.handle('dialog:newProject', async () => {
   }
   if (!mainWindow) return null
   const result = await dialog.showSaveDialog(mainWindow, {
-    title: 'Create Blockout Project',
-    buttonLabel: 'Create',
-    nameFieldLabel: 'Project name',
+    title: t('dialogs.createProject.title'),
+    buttonLabel: t('dialogs.createProject.buttonLabel'),
+    nameFieldLabel: t('dialogs.createProject.nameFieldLabel'),
     defaultPath: join(app.getPath('documents'), 'Untitled.blockout')
   })
   if (result.canceled || !result.filePath) return null
@@ -100,9 +130,9 @@ ipcMain.handle('dialog:openProject', async () => {
   }
   if (!mainWindow) return null
   const result = await dialog.showOpenDialog(mainWindow, {
-    title: 'Open Blockout Project',
+    title: t('dialogs.openProject.title'),
     properties: ['openDirectory'],
-    message: 'Choose a .blockout project folder'
+    message: t('dialogs.openProject.message')
   })
   if (result.canceled || result.filePaths.length === 0) return null
   return result.filePaths[0]

@@ -23,7 +23,7 @@ const APP_VERSION = (JSON.parse(readFileSync(join(process.cwd(), 'package.json')
 function callBridgeGetState(): Promise<{ isError?: boolean; content?: { text?: string }[] }> {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [join(process.cwd(), 'mcp', 'blockout-mcp.mjs')], {
-      env: { ...process.env, BLOCKOUT_CONFIG_DIR: configDir },
+      env: { ...process.env, BLOCKOUT_LOCALE: 'en', BLOCKOUT_CONFIG_DIR: configDir },
       stdio: ['pipe', 'pipe', 'pipe']
     })
     let stdout = ''
@@ -79,7 +79,7 @@ test.beforeAll(async () => {
 
   app = await electron.launch({
     args: ['out/main/index.js'],
-    env: { ...process.env, BLOCKOUT_SMOKE_DIR: smokeDir, BLOCKOUT_CONFIG_DIR: configDir }
+    env: { ...process.env, BLOCKOUT_LOCALE: 'en', BLOCKOUT_SMOKE_DIR: smokeDir, BLOCKOUT_CONFIG_DIR: configDir }
   })
   page = await app.firstWindow()
   await page.waitForLoadState('domcontentloaded')

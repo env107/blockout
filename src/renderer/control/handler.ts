@@ -15,6 +15,12 @@ import { renderStillPngForTest } from '../export/exporter'
 import { getSceneManager } from '../export/scene-access'
 import type { AspectId, GaitId } from '@engine/types'
 import type { FramingKind } from '../bus'
+import {
+  assetLabel,
+  cameraMoveLabel,
+  motionLabel,
+  actionLabel
+} from '../../shared/i18n/engine-labels'
 
 type Params = Record<string, unknown>
 type ControlResult = { ok: boolean; data?: unknown; error?: string }
@@ -104,7 +110,7 @@ async function execute(action: string, params: Params): Promise<unknown> {
       const cat = str(params, 'category')
       return ASSET_CATALOG.filter((a) => !cat || a.category === cat).map((a) => ({
         id: a.id,
-        name: a.name,
+        name: assetLabel(a),
         category: a.category
       }))
     }
@@ -130,7 +136,7 @@ async function execute(action: string, params: Params): Promise<unknown> {
           }
         })
       }
-      return { entityId, name: assetSpec(assetId)?.name }
+      return { entityId, name: assetLabel(assetSpec(assetId)!) }
     }
 
     case 'move_entity': {
@@ -298,7 +304,7 @@ async function execute(action: string, params: Params): Promise<unknown> {
       const { CAMERA_MOVE_PRESETS } = await import('@engine/camera-moves')
       return CAMERA_MOVE_PRESETS.map((p) => ({
         id: p.id,
-        name: p.name,
+        name: cameraMoveLabel(p),
         category: p.category,
         description: p.description,
         track: p.track
@@ -325,7 +331,7 @@ async function execute(action: string, params: Params): Promise<unknown> {
       const { ACTION_PRESETS } = await import('@engine/action-presets')
       return ACTION_PRESETS.map((p) => ({
         id: p.id,
-        name: p.name,
+        name: actionLabel(p),
         category: p.category,
         description: p.description,
         suggestedAssets: p.suggestedAssets
@@ -381,11 +387,16 @@ async function execute(action: string, params: Params): Promise<unknown> {
 
     case 'list_sequence_styles': {
       const { sequenceStyles } = await import('@engine/sequences')
+      const { MOTION_PRESETS } = await import('@engine/motions')
+      const labelStyle = (s: { id: string; name: string }) => {
+        const motion = MOTION_PRESETS.find((p) => p.id === s.id)
+        return motion ? motionLabel(motion) : s.name
+      }
       return {
-        dance: sequenceStyles('dance'),
-        fight: sequenceStyles('fight'),
-        footChase: sequenceStyles('footChase'),
-        carChase: sequenceStyles('carChase')
+        dance: sequenceStyles('dance').map((s) => ({ id: s.id, name: labelStyle(s) })),
+        fight: sequenceStyles('fight').map((s) => ({ id: s.id, name: labelStyle(s) })),
+        footChase: sequenceStyles('footChase').map((s) => ({ id: s.id, name: labelStyle(s) })),
+        carChase: sequenceStyles('carChase').map((s) => ({ id: s.id, name: labelStyle(s) }))
       }
     }
 

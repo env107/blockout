@@ -18,7 +18,7 @@ test.beforeAll(async () => {
   configDir = join(dir, 'config')
   app = await electron.launch({
     args: ['out/main/index.js'],
-    env: { ...process.env, BLOCKOUT_SMOKE_DIR: dir, BLOCKOUT_CONFIG_DIR: configDir }
+    env: { ...process.env, BLOCKOUT_LOCALE: 'en', BLOCKOUT_SMOKE_DIR: dir, BLOCKOUT_CONFIG_DIR: configDir }
   })
   page = await app.firstWindow()
   await page.waitForLoadState('domcontentloaded')

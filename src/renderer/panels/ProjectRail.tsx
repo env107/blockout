@@ -4,6 +4,7 @@
  */
 
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { Scene, Shot } from '@engine/types'
 import { newId } from '@engine/ids'
 import { useStore } from '../store'
@@ -24,6 +25,7 @@ interface RenameState {
 }
 
 export function ProjectRail(): JSX.Element {
+  const { t } = useTranslation()
   const doc = useStore((s) => s.doc)
   const sceneId = useStore((s) => s.sceneId)
   const shotId = useStore((s) => s.shotId)
@@ -67,7 +69,7 @@ export function ProjectRail(): JSX.Element {
 
   const deleteScene = (scene: Scene): void => {
     if (doc.scenes.length <= 1) {
-      toast('A project needs at least one scene.', 'error')
+      toast(t('ui.projectRail.needOneScene'), 'error')
       return
     }
     const wasCurrent = scene.id === sceneId
@@ -93,7 +95,7 @@ export function ProjectRail(): JSX.Element {
 
   const deleteShot = (scene: Scene, shot: Shot): void => {
     if (scene.shots.length <= 1) {
-      toast('A scene needs at least one shot.', 'error')
+      toast(t('ui.projectRail.needOneShot'), 'error')
       return
     }
     const wasCurrent = shot.id === shotId
@@ -112,10 +114,10 @@ export function ProjectRail(): JSX.Element {
     <div className="panel-section">
       <div className="rail-header">
         <div className="panel-title" style={{ marginBottom: 0 }}>
-          Scenes &amp; Shots
+          {t('ui.projectRail.title')}
         </div>
         <button className="btn small" onClick={() => addSceneAfter()}>
-          + Scene
+          {t('ui.projectRail.addScene')}
         </button>
       </div>
 
@@ -150,12 +152,12 @@ export function ProjectRail(): JSX.Element {
               ) : (
                 <>
                   <span className="rail-label">
-                    Scene {scene.number} — {scene.name}
+                    {t('ui.projectRail.sceneLabel', { number: scene.number, name: scene.name })}
                   </span>
                   <span className="rail-actions">
                     <button
                       className="rail-btn"
-                      title="Add shot"
+                      title={t('ui.projectRail.addShotTitle')}
                       onClick={(e) => {
                         e.stopPropagation()
                         addShotToScene(scene.id)
@@ -165,7 +167,7 @@ export function ProjectRail(): JSX.Element {
                     </button>
                     <button
                       className="rail-btn"
-                      title="Delete scene"
+                      title={t('ui.projectRail.deleteSceneTitle')}
                       onClick={(e) => {
                         e.stopPropagation()
                         deleteScene(scene)
@@ -211,23 +213,27 @@ export function ProjectRail(): JSX.Element {
                       ) : (
                         <>
                           <span className="rail-label">{shot.name}</span>
-                          <span className="rail-dur">{Math.round(shot.duration)}s</span>
+                          <span className="rail-dur">
+                            {t('ui.projectRail.shotDuration', {
+                              duration: Math.round(shot.duration)
+                            })}
+                          </span>
                           <span className="rail-actions">
                             {isCurrentShot && (
                               <button
                                 className="rail-btn"
-                                title="Save current shot as a draft"
+                                title={t('ui.projectRail.addDraftTitle')}
                                 onClick={(e) => {
                                   e.stopPropagation()
                                   saveDraftOfShot()
                                 }}
                               >
-                                + Draft
+                                {t('ui.projectRail.addDraft')}
                               </button>
                             )}
                             <button
                               className="rail-btn"
-                              title="Duplicate shot"
+                              title={t('ui.projectRail.duplicateShotTitle')}
                               onClick={(e) => {
                                 e.stopPropagation()
                                 duplicateShot(scene, shot)
@@ -237,7 +243,7 @@ export function ProjectRail(): JSX.Element {
                             </button>
                             <button
                               className="rail-btn"
-                              title="Delete shot"
+                              title={t('ui.projectRail.deleteShotTitle')}
                               onClick={(e) => {
                                 e.stopPropagation()
                                 deleteShot(scene, shot)
@@ -258,11 +264,13 @@ export function ProjectRail(): JSX.Element {
                           key={draft.id}
                           onClick={() => selectShot(draft.id)}
                         >
-                          <span className="rail-label">└ {draft.name}</span>
+                          <span className="rail-label">
+                            {t('ui.projectRail.draftLabel', { name: draft.name })}
+                          </span>
                           <span className="rail-actions">
                             <button
                               className="rail-btn"
-                              title="Make this the shot"
+                              title={t('ui.projectRail.promoteDraftTitle')}
                               onClick={(e) => {
                                 e.stopPropagation()
                                 promoteDraft(draft.id)
@@ -272,7 +280,7 @@ export function ProjectRail(): JSX.Element {
                             </button>
                             <button
                               className="rail-btn"
-                              title="Delete draft"
+                              title={t('ui.projectRail.deleteDraftTitle')}
                               onClick={(e) => {
                                 e.stopPropagation()
                                 deleteDraft(draft.id)

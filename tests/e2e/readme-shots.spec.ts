@@ -138,7 +138,7 @@ test.beforeAll(async () => {
   const smokeDir = mkdtempSync(join(tmpdir(), 'blockout-readme-'))
   app = await electron.launch({
     args: ['out/main/index.js'],
-    env: { ...process.env, BLOCKOUT_SMOKE_DIR: smokeDir }
+    env: { ...process.env, BLOCKOUT_LOCALE: 'en', BLOCKOUT_SMOKE_DIR: smokeDir }
   })
   page = await app.firstWindow()
   await page.setViewportSize({ width: 1600, height: 1000 }).catch(() => {})

@@ -1,5 +1,6 @@
 import React from 'react'
 import { createRoot } from 'react-dom/client'
+import { I18nextProvider } from 'react-i18next'
 import { App } from './App'
 import { useStore } from './store'
 import {
@@ -15,6 +16,7 @@ import { getProfile } from '@engine/profiles'
 import { MOTION_PRESETS } from '@engine/motions'
 import { ACTION_PRESETS } from '@engine/action-presets'
 import type { AspectId } from '@engine/types'
+import { initI18n, i18n } from '../shared/i18n'
 
 // Automation surface for the e2e smoke test and for AI-agent driving —
 // not a public API; see AGENTS.md.
@@ -30,12 +32,21 @@ import type { AspectId } from '@engine/types'
   ACTION_PRESETS
 }
 
-// External agents (MCP clients) drive the app through this whitelist.
 registerControlHandler()
 
-const root = createRoot(document.getElementById('root')!)
-root.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-)
+async function boot(): Promise<void> {
+  const locale = await window.blockout.getLocale()
+  await initI18n(locale)
+  document.documentElement.lang = locale
+
+  const root = createRoot(document.getElementById('root')!)
+  root.render(
+    <React.StrictMode>
+      <I18nextProvider i18n={i18n}>
+        <App />
+      </I18nextProvider>
+    </React.StrictMode>
+  )
+}
+
+void boot()

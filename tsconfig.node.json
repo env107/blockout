@@ -11,7 +11,11 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "noEmit": true
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@engine/*": ["src/engine/*"]
+    }
   },
-  "include": ["src/main", "src/shared", "electron.vite.config.ts", "tests/e2e"]
+  "include": ["src/main", "src/shared", "src/engine", "electron.vite.config.ts", "tests/e2e"]
 }

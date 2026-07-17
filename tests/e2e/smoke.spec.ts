@@ -27,7 +27,7 @@ test.beforeAll(async () => {
   smokeDir = mkdtempSync(join(root, 'blockout-smoke-'))
   app = await electron.launch({
     args: ['out/main/index.js'],
-    env: { ...process.env, BLOCKOUT_SMOKE_DIR: smokeDir }
+    env: { ...process.env, BLOCKOUT_LOCALE: 'en', BLOCKOUT_SMOKE_DIR: smokeDir }
   })
   page = await app.firstWindow()
   await page.waitForLoadState('domcontentloaded')

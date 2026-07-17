@@ -7,6 +7,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useStore } from '../store'
 
 export function ReferenceUnderlay(): JSX.Element | null {
@@ -87,6 +88,7 @@ export function ReferenceUnderlay(): JSX.Element | null {
 
 /** Toolbar controls for the underlay (Shoot mode). */
 export function ReferenceControls(): JSX.Element | null {
+  const { t } = useTranslation()
   const doc = useStore((s) => s.doc)
   const sceneId = useStore((s) => s.sceneId)
   const shotId = useStore((s) => s.shotId)
@@ -114,17 +116,17 @@ export function ReferenceControls(): JSX.Element | null {
       }
     })
     setOpen(true)
-    toast('Reference attached — match your blocking against it.', 'success')
+    toast(t('ui.reference.toastAttached'), 'success')
   }
 
   return (
     <div style={{ position: 'relative' }}>
       <button
         className={`btn small ${ref ? 'active' : ''}`}
-        title="Reference video underlay — match an existing shot by eye"
+        title={t('ui.reference.refTitle')}
         onClick={() => (ref ? setOpen(!open) : void attach())}
       >
-        🎞 Ref
+        {t('ui.reference.ref')}
       </button>
       {open && ref && (
         <div
@@ -141,7 +143,7 @@ export function ReferenceControls(): JSX.Element | null {
           }}
         >
           <div className="field">
-            <label>Opacity ({Math.round(ref.opacity * 100)}%)</label>
+            <label>{t('ui.reference.opacity', { percent: Math.round(ref.opacity * 100) })}</label>
             <input
               type="range"
               min={0.1}
@@ -159,7 +161,7 @@ export function ReferenceControls(): JSX.Element | null {
             />
           </div>
           <div className="field">
-            <label>Mode</label>
+            <label>{t('ui.reference.mode')}</label>
             <div className="seg">
               {(['ghost', 'pip'] as const).map((m) => (
                 <button
@@ -174,13 +176,13 @@ export function ReferenceControls(): JSX.Element | null {
                     })
                   }
                 >
-                  {m === 'ghost' ? 'Ghost overlay' : 'PiP'}
+                  {m === 'ghost' ? t('ui.reference.ghostOverlay') : t('ui.reference.pip')}
                 </button>
               ))}
             </div>
           </div>
           <div className="field">
-            <label>Time offset ({ref.timeOffset.toFixed(1)}s)</label>
+            <label>{t('ui.reference.timeOffset', { offset: ref.timeOffset.toFixed(1) })}</label>
             <input
               type="range"
               min={-10}
@@ -210,7 +212,7 @@ export function ReferenceControls(): JSX.Element | null {
               setOpen(false)
             }}
           >
-            Remove reference
+            {t('ui.reference.remove')}
           </button>
         </div>
       )}

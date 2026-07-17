@@ -9,6 +9,7 @@ import { useStore } from '../store'
 import { createEntity, createCameraMark } from '@engine/schema'
 import { assetSpec } from '@engine/assets'
 import type { GaitId } from '@engine/types'
+import { t } from '../../shared/i18n'
 
 const DEG2RAD = Math.PI / 180
 
@@ -20,7 +21,7 @@ export async function populateFromReference(): Promise<void> {
   ])
   if (!file) return
 
-  s.toast('Analyzing reference with Claude — this takes ~30–90 seconds…', 'info')
+  s.toast(t('toasts.analyzingReference'), 'info')
   const result = await window.blockout.analyzeReference(file)
   if (!result.ok) {
     s.toast(result.error, 'error')
@@ -73,7 +74,14 @@ export async function populateFromReference(): Promise<void> {
 
   const camNote =
     useStore.getState().shot()?.camera.marks.length === 1
-      ? ' Camera Mark 1 set to match the reference framing — check the shot preview.'
+      ? t('toasts.stagedFromReferenceCamNote')
       : ''
-  s.toast(`Staged ${layout.entities.length} elements from the reference.${camNote} ${layout.notes}`, 'success')
+  s.toast(
+    t('toasts.stagedFromReference', {
+      count: layout.entities.length,
+      camNote,
+      notes: layout.notes
+    }),
+    'success'
+  )
 }

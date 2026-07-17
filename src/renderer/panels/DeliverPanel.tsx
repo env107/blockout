@@ -5,9 +5,11 @@
  */
 
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useStore } from '../store'
 import { BUILTIN_PROFILES, getProfile } from '@engine/profiles'
 import { generatePrompt } from '@engine/prompt'
+import { profileLabel, profileAttachHint } from '../../shared/i18n/engine-labels'
 import {
   exportShot,
   exportAnimatic,
@@ -19,6 +21,7 @@ import {
 import { exportGlb } from '../export/gltf'
 
 export function DeliverPanel(): JSX.Element {
+  const { t } = useTranslation()
   const doc = useStore((s) => s.doc)
   const sceneId = useStore((s) => s.sceneId)
   const shotId = useStore((s) => s.shotId)
@@ -44,8 +47,8 @@ export function DeliverPanel(): JSX.Element {
   if (!scene || !shot) {
     return (
       <div className="deliver-panel">
-        <div className="panel-title">Deliver</div>
-        <p style={{ color: 'var(--text-dim)' }}>Select a shot to export.</p>
+        <div className="panel-title">{t('ui.deliver.title')}</div>
+        <p style={{ color: 'var(--text-dim)' }}>{t('ui.deliver.selectShot')}</p>
       </div>
     )
   }
@@ -58,19 +61,21 @@ export function DeliverPanel(): JSX.Element {
   const run = async (): Promise<void> => {
     const res = await exportShot({ profileId, passes, labels, resolution })
     if (res.ok && res.packagePath) {
-      toast('Export complete.', 'success')
+      toast(t('ui.deliver.toastExportComplete'), 'success')
       void window.blockout.showFolder(res.packagePath)
     } else if (res.error && res.error !== 'cancelled') {
-      toast(`Export failed: ${res.error}`, 'error')
+      toast(t('ui.deliver.toastExportFailed', { error: res.error }), 'error')
     }
   }
 
   return (
     <div className="deliver-panel">
-      <div className="panel-title">Deliver — {scene.name} / Shot {shot.name}</div>
+      <div className="panel-title">
+        {t('ui.deliver.titleWithScene', { scene: scene.name, shot: shot.name })}
+      </div>
 
       <div className="field">
-        <label>Target generator</label>
+        <label>{t('ui.deliver.targetGenerator')}</label>
         <select
           value={profileId}
           onChange={(e) => {
@@ -82,78 +87,86 @@ export function DeliverPanel(): JSX.Element {
         >
           {BUILTIN_PROFILES.map((p) => (
             <option key={p.id} value={p.id}>
-              {p.name} ({p.vendor})
+              {profileLabel(p)} ({p.vendor})
             </option>
           ))}
         </select>
       </div>
 
       <p style={{ color: 'var(--text-dim)', fontSize: 12, marginBottom: 12, lineHeight: 1.5 }}>
-        {profile.attachHint}
+        {profileAttachHint(profile)}
       </p>
 
       {overCap && (
         <div className="warning-chip" style={{ marginBottom: 10 }}>
-          ⚠ Shot is {shot.duration.toFixed(1)}s but {profile.name} caps clips at{' '}
-          {profile.maxDuration}s — consider shortening.
+          {t('ui.deliver.durationWarning', {
+            duration: shot.duration.toFixed(1),
+            profile: profileLabel(profile),
+            max: profile.maxDuration
+          })}
         </div>
       )}
 
       <div className="field">
         <label>
-          Output — {dims.width}×{dims.height} @ {shot.fps}fps · {shot.aspect}
+          {t('ui.deliver.output', {
+            width: dims.width,
+            height: dims.height,
+            fps: shot.fps,
+            aspect: shot.aspect
+          })}
         </label>
         <div className="seg">
           <button className={passes.clean ? 'active' : ''} onClick={() => setPasses((p) => ({ ...p, clean: !p.clean }))}>
-            Clean
+            {t('ui.deliver.passes.clean')}
           </button>
           <button className={passes.depth ? 'active' : ''} onClick={() => setPasses((p) => ({ ...p, depth: !p.depth }))}>
-            Depth
+            {t('ui.deliver.passes.depth')}
           </button>
           <button className={passes.normal ? 'active' : ''} onClick={() => setPasses((p) => ({ ...p, normal: !p.normal }))}>
-            Normal
+            {t('ui.deliver.passes.normal')}
           </button>
         </div>
       </div>
 
       <div className="field">
-        <label>Resolution</label>
+        <label>{t('ui.deliver.resolution')}</label>
         <div className="seg">
           <button
             className={resolution === 'auto' ? 'active' : ''}
             onClick={() => setResolution('auto')}
-            title={`The profile's native size`}
+            title={t('ui.deliver.resolutionAutoTitle')}
           >
-            Auto
+            {t('ui.deliver.resolutionAuto')}
           </button>
           <button
             className={resolution === '720p' ? 'active' : ''}
             onClick={() => setResolution('720p')}
-            title="720p — what Seedance accepts for reference files. Applies to videos, stills, and animatics."
+            title={t('ui.deliver.resolution720pTitle')}
           >
-            720p
+            {t('ui.deliver.resolution720p')}
           </button>
           <button
             className={resolution === '1080p' ? 'active' : ''}
             onClick={() => setResolution('1080p')}
-            title="1080p"
+            title={t('ui.deliver.resolution1080pTitle')}
           >
-            1080p
+            {t('ui.deliver.resolution1080p')}
           </button>
         </div>
       </div>
 
       <div className="field">
-        <label>Labels</label>
+        <label>{t('ui.deliver.labels')}</label>
         <div className="seg">
           <button className={labels === 'on' ? 'active' : ''} onClick={() => setLabels('on')}>
-            In video
+            {t('ui.deliver.labelsInVideo')}
           </button>
           <button className={labels === 'stillsOnly' ? 'active' : ''} onClick={() => setLabels('stillsOnly')}>
-            Stills only
+            {t('ui.deliver.labelsStillsOnly')}
           </button>
           <button className={labels === 'off' ? 'active' : ''} onClick={() => setLabels('off')}>
-            Off
+            {t('ui.deliver.labelsOff')}
           </button>
         </div>
       </div>
@@ -161,7 +174,11 @@ export function DeliverPanel(): JSX.Element {
       {progress.running ? (
         <div className="field">
           <label>
-            {progress.label} {progress.frame}/{progress.totalFrames}
+            {t('ui.deliver.progress', {
+              label: progress.label,
+              frame: progress.frame,
+              total: progress.totalFrames
+            })}
           </label>
           <div className="progress-bar">
             <div style={{ width: `${pct}%` }} />
@@ -171,7 +188,7 @@ export function DeliverPanel(): JSX.Element {
             style={{ marginTop: 8 }}
             onClick={() => setExportProgress({ cancelRequested: true })}
           >
-            Cancel
+            {t('ui.deliver.cancel')}
           </button>
         </div>
       ) : (
@@ -181,7 +198,7 @@ export function DeliverPanel(): JSX.Element {
           disabled={!passes.clean && !passes.depth && !passes.normal}
           onClick={() => void run()}
         >
-          Export shot package
+          {t('ui.deliver.exportShotPackage')}
         </button>
       )}
 
@@ -192,14 +209,14 @@ export function DeliverPanel(): JSX.Element {
         onClick={() =>
           void exportStillAtPlayhead(profileId, resolution, labels !== 'off').then((r) => {
             if (r.ok && r.packagePath) {
-              toast('Frame exported.', 'success')
+              toast(t('ui.deliver.toastFrameExported'), 'success')
               void window.blockout.showFolder(r.packagePath)
-            } else if (r.error) toast(`Frame export failed: ${r.error}`, 'error')
+            } else if (r.error) toast(t('ui.deliver.toastFrameExportFailed', { error: r.error }), 'error')
           })
         }
-        title="Export ONLY the frame at the playhead as a full-quality PNG — scrub to the exact moment you want first"
+        title={t('ui.deliver.exportThisFrameTitle')}
       >
-        📸 Export this frame (at playhead)
+        {t('ui.deliver.exportThisFrame')}
       </button>
 
       {progress.lastPackagePath && !progress.running && (
@@ -208,12 +225,14 @@ export function DeliverPanel(): JSX.Element {
           style={{ width: '100%', marginBottom: 14 }}
           onClick={() => void window.blockout.showFolder(progress.lastPackagePath!)}
         >
-          {window.blockout.platform.isMac ? 'Reveal last export in Finder' : 'Show last export in Folder'}
+          {window.blockout.platform.isMac
+            ? t('ui.deliver.revealLastExportMac')
+            : t('ui.deliver.showLastExport')}
         </button>
       )}
 
       <div className="panel-title" style={{ marginTop: 10 }}>
-        Prompt for {profile.name}
+        {t('ui.deliver.promptFor', { name: profileLabel(profile) })}
       </div>
       <div className="prompt-box">{prompt}</div>
       <button
@@ -221,13 +240,13 @@ export function DeliverPanel(): JSX.Element {
         style={{ width: '100%', margin: '8px 0 18px' }}
         onClick={() => {
           void navigator.clipboard.writeText(prompt)
-          toast('Prompt copied.', 'success')
+          toast(t('ui.deliver.toastPromptCopied'), 'success')
         }}
       >
-        Copy prompt
+        {t('ui.deliver.copyPrompt')}
       </button>
 
-      <div className="panel-title">Scene tools</div>
+      <div className="panel-title">{t('ui.deliver.sceneTools')}</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <button
           className="btn"
@@ -235,13 +254,15 @@ export function DeliverPanel(): JSX.Element {
           onClick={() =>
             void exportAnimatic(profileId, resolution).then((r) => {
               if (r.ok && r.packagePath) {
-                toast('Animatic exported.', 'success')
+                toast(t('ui.deliver.toastAnimaticExported'), 'success')
                 void window.blockout.showFolder(r.packagePath)
-              } else if (r.error && r.error !== 'cancelled') toast(`Animatic failed: ${r.error}`, 'error')
+              } else if (r.error && r.error !== 'cancelled') {
+                toast(t('ui.deliver.toastAnimaticFailed', { error: r.error }), 'error')
+              }
             })
           }
         >
-          Export scene animatic ({scene.shots.length} shots)
+          {t('ui.deliver.exportAnimatic', { count: scene.shots.length })}
         </button>
         <button
           className="btn"
@@ -249,13 +270,13 @@ export function DeliverPanel(): JSX.Element {
           onClick={() =>
             void exportContactSheet().then((r) => {
               if (r.ok && r.packagePath) {
-                toast('Contact sheet exported.', 'success')
+                toast(t('ui.deliver.toastContactSheetExported'), 'success')
                 void window.blockout.showFolder(r.packagePath)
-              } else if (r.error) toast(`Contact sheet failed: ${r.error}`, 'error')
+              } else if (r.error) toast(t('ui.deliver.toastContactSheetFailed', { error: r.error }), 'error')
             })
           }
         >
-          Export contact sheet
+          {t('ui.deliver.exportContactSheet')}
         </button>
         <button
           className="btn"
@@ -263,13 +284,13 @@ export function DeliverPanel(): JSX.Element {
           onClick={() =>
             void exportGlb(profileId).then((r) => {
               if (r.ok && r.packagePath) {
-                toast('Blender package exported (.glb + import script).', 'success')
+                toast(t('ui.deliver.toastBlenderExported'), 'success')
                 void window.blockout.showFolder(r.packagePath)
-              } else if (r.error) toast(`glTF export failed: ${r.error}`, 'error')
+              } else if (r.error) toast(t('ui.deliver.toastGltfFailed', { error: r.error }), 'error')
             })
           }
         >
-          Export to Blender (.glb)
+          {t('ui.deliver.exportBlender')}
         </button>
       </div>
     </div>
