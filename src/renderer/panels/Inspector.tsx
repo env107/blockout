@@ -30,6 +30,7 @@ import {
   actionDescription,
   actionCategoryLabel
 } from '../../shared/i18n/engine-labels'
+import { CameraMarkFields } from './camera-mark-fields'
 import type {
   ActorMark,
   CameraMark,
@@ -1637,6 +1638,36 @@ function MarkInspector({
     })
   }
 
+  const editCameraMark = (label: string, fn: (m: CameraMark) => void): void => {
+    editMark(label, fn as (m: CameraMark | ActorMark) => void)
+  }
+
+  if (cameraMark) {
+    return (
+      <div>
+        <div className="panel-section">
+          <div className="panel-title">{t('ui.inspector.mark.title', { index })}</div>
+        </div>
+        <CameraMarkFields mark={cameraMark} duration={duration} editMark={editCameraMark} />
+        <div className="panel-section">
+          <button
+            className="btn danger"
+            style={{ width: '100%' }}
+            onClick={() => {
+              mutate('delete mark', (doc) => {
+                const sh = findShot(doc, scene.id, shot.id)
+                if (sh) sh.camera.marks = sh.camera.marks.filter((m) => m.id !== markId)
+              })
+              setSelection(null)
+            }}
+          >
+            {t('ui.inspector.mark.deleteMark')}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div>
       <div className="panel-section">
@@ -1761,89 +1792,37 @@ function MarkInspector({
 
       {actorMark && <MarkPoseSection mark={actorMark} editMark={editMark} />}
 
-      {cameraMark && (
+      {!cameraMark && (
         <div className="panel-section">
-          <div className="panel-title">{t('ui.inspector.mark.optics')}</div>
-          <div className="field">
-            <label>{t('ui.inspector.mark.focalLength')}</label>
-            <input
-              type="number"
-              min={8}
-              max={300}
-              step={1}
-              value={cameraMark.focalLength}
-              onChange={(e) => {
-                const v = num(e.target.value)
-                if (v !== null)
-                  editMark('focal length', (m) => ((m as CameraMark).focalLength = clamp(v, 8, 300)))
-              }}
-            />
-          </div>
-          <div className="field">
-            <label>
-              <input
-                type="checkbox"
-                checked={cameraMark.focusDistance === undefined}
-                onChange={(e) => {
-                  const deep = e.target.checked
-                  editMark('focus mode', (m) => {
-                    (m as CameraMark).focusDistance = deep ? undefined : 3
-                  })
-                }}
-                style={{ width: 'auto', marginRight: 6 }}
-              />
-              {t('ui.inspector.mark.deepFocus')}
-            </label>
-          </div>
-          {cameraMark.focusDistance !== undefined && (
-            <div className="field">
-              <label>{t('ui.inspector.mark.focusDistance')}</label>
+          <div className="panel-title">{t('ui.inspector.mark.position')}</div>
+          <div className="field-row">
+            <div className="field" style={{ flex: 1 }}>
+              <label>{t('ui.inspector.entity.x')}</label>
               <input
                 type="number"
-                min={0.3}
-                max={100}
                 step={0.1}
-                value={cameraMark.focusDistance}
+                value={mark.position.x}
                 onChange={(e) => {
                   const v = num(e.target.value)
-                  if (v !== null)
-                    editMark('focus distance', (m) => ((m as CameraMark).focusDistance = clamp(v, 0.3, 100)))
+                  if (v !== null) editMark('mark X', (m) => (m.position.x = v))
                 }}
               />
             </div>
-          )}
+            <div className="field" style={{ flex: 1 }}>
+              <label>{t('ui.inspector.entity.z')}</label>
+              <input
+                type="number"
+                step={0.1}
+                value={mark.position.z}
+                onChange={(e) => {
+                  const v = num(e.target.value)
+                  if (v !== null) editMark('mark Z', (m) => (m.position.z = v))
+                }}
+              />
+            </div>
+          </div>
         </div>
       )}
-
-      <div className="panel-section">
-        <div className="panel-title">{t('ui.inspector.mark.position')}</div>
-        <div className="field-row">
-          <div className="field" style={{ flex: 1 }}>
-            <label>{t('ui.inspector.entity.x')}</label>
-            <input
-              type="number"
-              step={0.1}
-              value={mark.position.x}
-              onChange={(e) => {
-                const v = num(e.target.value)
-                if (v !== null) editMark('mark X', (m) => (m.position.x = v))
-              }}
-            />
-          </div>
-          <div className="field" style={{ flex: 1 }}>
-            <label>{t('ui.inspector.entity.z')}</label>
-            <input
-              type="number"
-              step={0.1}
-              value={mark.position.z}
-              onChange={(e) => {
-                const v = num(e.target.value)
-                if (v !== null) editMark('mark Z', (m) => (m.position.z = v))
-              }}
-            />
-          </div>
-        </div>
-      </div>
 
       <div className="panel-section">
         <button

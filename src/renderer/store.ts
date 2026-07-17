@@ -75,10 +75,14 @@ interface BlockoutState {
   pipSize: 'off' | 'small' | 'medium' | 'large'
   /** Help & tutorial overlay. */
   helpOpen: boolean
+  /** Camera keyframe config dialog (shoot mode). */
+  cameraMarkDialog: { markId: string } | null
   /** True while performing a live camera-move recording. */
   recording: boolean
   /** How tightly recording follows the mouse: precise = heavy smoothing. */
   recordControl: 'precise' | 'normal' | 'fast'
+  /** Editor viewport fly speed (m/s) for WASD and wheel dolly. */
+  flyMoveSpeed: number
   playing: boolean
   time: number
   dirty: boolean
@@ -104,6 +108,7 @@ interface BlockoutState {
   setPipSize(size: 'off' | 'small' | 'medium' | 'large'): void
   setRecording(on: boolean): void
   setRecordControl(mode: 'precise' | 'normal' | 'fast'): void
+  setFlyMoveSpeed(speed: number): void
   /** Select every mark in one timeline lane (camera or an entity). */
   selectAllMarksInLane(entityId: string | 'camera'): void
   /** Select every mark on every lane of the current shot. */
@@ -111,6 +116,10 @@ interface BlockoutState {
   /** Delete the marks in the current mark/marks selection. */
   deleteSelectedMarks(): void
   setHelpOpen(open: boolean): void
+  /** Open or close the camera keyframe config dialog. */
+  setCameraMarkDialog(markId: string | null): void
+  /** Select mark, scrub playhead, and open the camera keyframe dialog. */
+  openCameraMarkDialog(markId: string): void
 
   /* --- playback --- */
   setPlaying(playing: boolean): void
@@ -207,7 +216,9 @@ export const useStore = create<BlockoutState>((set, get) => ({
   pipSize: 'medium',
   recording: false,
   recordControl: 'normal',
+  flyMoveSpeed: 10,
   helpOpen: false,
+  cameraMarkDialog: null,
   playing: false,
   time: 0,
   dirty: false,
@@ -301,6 +312,7 @@ export const useStore = create<BlockoutState>((set, get) => ({
   setPipSize: (pipSize) => set({ pipSize }),
   setRecording: (recording) => set({ recording }),
   setRecordControl: (recordControl) => set({ recordControl }),
+  setFlyMoveSpeed: (flyMoveSpeed) => set({ flyMoveSpeed }),
 
   selectAllMarksInLane(entityId) {
     const scene = get().scene()
@@ -356,6 +368,23 @@ export const useStore = create<BlockoutState>((set, get) => ({
     )
   },
   setHelpOpen: (helpOpen) => set({ helpOpen }),
+
+  openCameraMarkDialog(markId) {
+    const shot = get().shot()
+    const mark = shot?.camera.marks.find((m) => m.id === markId)
+    if (!mark) return
+    set({
+      cameraMarkDialog: { markId },
+      selection: { kind: 'mark', entityId: 'camera', markId },
+      time: mark.time,
+      playing: false
+    })
+  },
+
+  setCameraMarkDialog(markId) {
+    if (markId === null) set({ cameraMarkDialog: null })
+    else get().openCameraMarkDialog(markId)
+  },
 
   setPlaying(playing) {
     const { shot, time } = get()

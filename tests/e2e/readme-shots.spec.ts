@@ -31,9 +31,7 @@ async function flyCam(
   await p.evaluate(
     ({ pos, target }) => {
       const sm = (window as any).__blockout_scene
-      sm.freeCam.position.set(pos[0], pos[1], pos[2])
-      sm.controls.target.set(target[0], target[1], target[2])
-      sm.controls.update?.()
+      sm.lookAtFreeCam(pos, target)
     },
     { pos, target }
   )
@@ -102,8 +100,7 @@ async function frameEntities(
       const camZ = c[2] + Math.cos(az) * horiz
       const camY = c[1] + Math.sin(el) * dist
       sm.freeCam.position.set(camX, camY, camZ)
-      sm.controls.target.set(c[0], c[1], c[2])
-      sm.controls.update?.()
+      sm.lookAtFreeCam([camX, camY, camZ], c)
     },
     { entityIds, opts }
   )

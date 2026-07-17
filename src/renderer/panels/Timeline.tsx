@@ -16,6 +16,7 @@ import { gaitLabel } from '../../shared/i18n/engine-labels'
 import type { ActorMark, CameraMark, MarkBase, Scene, Shot } from '@engine/types'
 
 const clamp = (v: number, lo: number, hi: number): number => Math.min(Math.max(v, lo), hi)
+const DRAG_CLICK_THRESHOLD_PX = 4
 
 interface TimelineLane {
   key: string
@@ -44,7 +45,9 @@ export function Timeline(): JSX.Element {
   const setPlaying = useStore((s) => s.setPlaying)
   const setSelection = useStore((s) => s.setSelection)
   const toggleMarkSelected = useStore((s) => s.toggleMarkSelected)
+  const openCameraMarkDialog = useStore((s) => s.openCameraMarkDialog)
   const mutate = useStore((s) => s.mutate)
+  const suppressClickRef = useRef<string | null>(null)
 
   const [drag, setDrag] = useState<DragState | null>(null)
   const [panelHeight, setPanelHeight] = useState(240)
@@ -202,8 +205,10 @@ export function Timeline(): JSX.Element {
     target.setPointerCapture(e.pointerId)
     const w = laneWidth()
     const startX = e.clientX
+    const startY = e.clientY
     const startTime = mark.time
     const startHold = mark.hold
+    suppressClickRef.current = null
     // Shift-click multi-selection is handled on click (toggleMarkSelected);
     // don't collapse it to a single mark here on pointer-down.
     if (!e.shiftKey) setSelection({ kind: 'mark', entityId, markId: mark.id })
@@ -212,7 +217,12 @@ export function Timeline(): JSX.Element {
     setDrag(localState)
 
     const onMove = (ev: PointerEvent): void => {
-      const dt = ((ev.clientX - startX) / w) * duration
+      const dx = ev.clientX - startX
+      const dy = ev.clientY - startY
+      if (Math.hypot(dx, dy) >= DRAG_CLICK_THRESHOLD_PX) {
+        suppressClickRef.current = mark.id
+      }
+      const dt = (dx / w) * duration
       if (mode === 'move') {
         localState.time = clamp(startTime + dt, 0, duration - startHold)
         setTime(localState.time)
@@ -236,22 +246,6 @@ export function Timeline(): JSX.Element {
 
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', onUp)
-  }
-
-  const deleteMark = (entityId: string | 'camera', markId: string): void => {
-    mutate('delete mark', (doc) => {
-      const sc = doc.scenes.find((s) => s.id === scene.id)
-      const sh = sc?.shots.find((s) => s.id === shot.id)
-      if (!sc || !sh) return
-      if (entityId === 'camera') {
-        sh.camera.marks = sh.camera.marks.filter((m) => m.id !== markId)
-      } else {
-        const tk = sc.blocking.find((b) => b.id === sh.blockingTakeId)
-        const tr = tk?.tracks.find((t) => t.entityId === entityId)
-        if (tr) tr.marks = tr.marks.filter((m) => m.id !== markId)
-      }
-    })
-    if (selection?.kind === 'mark' && selection.markId === markId) setSelection(null)
   }
 
   const playheadLeft = `${(clamp(time, 0, duration) / duration) * 100}%`
@@ -352,12 +346,13 @@ export function Timeline(): JSX.Element {
               duration={duration}
               drag={drag}
               selection={selection}
+              suppressClickRef={suppressClickRef}
               onSelect={(markId, shiftKey) => {
                 if (shiftKey) toggleMarkSelected(lane.entityId, markId)
                 else setSelection({ kind: 'mark', entityId: lane.entityId, markId })
               }}
+              onOpenCameraDialog={openCameraMarkDialog}
               onBeginDrag={beginDrag}
-              onDelete={deleteMark}
               laneWidth={laneWidth}
             />
           </div>
@@ -376,14 +371,15 @@ interface LaneProps {
   duration: number
   drag: DragState | null
   selection: ReturnType<typeof useStore.getState>['selection']
+  suppressClickRef: React.MutableRefObject<string | null>
   onSelect: (markId: string, shiftKey: boolean) => void
+  onOpenCameraDialog: (markId: string) => void
   onBeginDrag: (
     entityId: string | 'camera',
     mark: MarkBase,
     mode: 'move' | 'stretch',
     e: ReactPointerEvent<HTMLElement>
   ) => void
-  onDelete: (entityId: string | 'camera', markId: string) => void
   laneWidth: () => number
 }
 
@@ -392,9 +388,10 @@ function Lane({
   duration,
   drag,
   selection,
+  suppressClickRef,
   onSelect,
+  onOpenCameraDialog,
   onBeginDrag,
-  onDelete,
   laneWidth
 }: LaneProps): JSX.Element {
   // 1-based index by time order.
@@ -420,15 +417,22 @@ function Lane({
           <div
             key={mark.id}
             className={`mark-pill${selected ? ' selected' : ''}`}
+            data-testid={lane.entityId === 'camera' ? 'camera-mark-pill' : 'actor-mark-pill'}
+            data-mark-id={mark.id}
             style={{ left: `${(t / duration) * 100}%`, width }}
             onPointerDown={(e) => onBeginDrag(lane.entityId, mark, 'move', e)}
             onClick={(e) => {
               e.stopPropagation()
-              onSelect(mark.id, e.shiftKey)
-            }}
-            onDoubleClick={(e) => {
-              e.stopPropagation()
-              onDelete(lane.entityId, mark.id)
+              if (suppressClickRef.current === mark.id) {
+                suppressClickRef.current = null
+                return
+              }
+              if (e.shiftKey) {
+                onSelect(mark.id, true)
+                return
+              }
+              onSelect(mark.id, false)
+              if (lane.entityId === 'camera') onOpenCameraDialog(mark.id)
             }}
           >
             {indexOf.get(mark.id)}

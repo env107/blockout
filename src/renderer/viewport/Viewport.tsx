@@ -14,6 +14,7 @@ import { registerSceneManager, getSceneManager as getSceneManagerSafe } from '..
 import { ReferenceUnderlay, ReferenceControls } from './ReferenceUnderlay'
 import { LENS_SET, SHOT_SIZES } from '@engine/camera'
 import type { AspectId } from '@engine/types'
+import { FLY_MOVE_SPEED_MAX, FLY_MOVE_SPEED_MIN } from './flyNavigation'
 
 const ASPECT_ORDER: AspectId[] = ['16:9', '9:16', '2.39:1', '4:3', '1:1']
 
@@ -180,6 +181,27 @@ function GizmoModeRow(): JSX.Element {
   )
 }
 
+function FlySpeedSlider(): JSX.Element {
+  const { t } = useTranslation()
+  const flyMoveSpeed = useStore((s) => s.flyMoveSpeed)
+  const setFlyMoveSpeed = useStore((s) => s.setFlyMoveSpeed)
+  return (
+    <div className="tool-row fly-speed-row" title={t('ui.viewport.flySpeed.title')}>
+      <label className="fly-speed-label">{t('ui.viewport.flySpeed.label')}</label>
+      <input
+        type="range"
+        className="fly-speed-slider"
+        min={FLY_MOVE_SPEED_MIN}
+        max={FLY_MOVE_SPEED_MAX}
+        step={1}
+        value={flyMoveSpeed}
+        onChange={(e) => setFlyMoveSpeed(Number(e.target.value))}
+      />
+      <span className="fly-speed-value">{t('ui.viewport.flySpeed.value', { value: flyMoveSpeed })}</span>
+    </div>
+  )
+}
+
 export function Viewport(): JSX.Element {
   const { t } = useTranslation()
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -241,6 +263,8 @@ export function Viewport(): JSX.Element {
     hint = t('ui.viewport.hints.droppingMarksCamera')
   else if (selection?.kind === 'entities')
     hint = t('ui.viewport.hints.multiSelect', { count: selection.entityIds.length })
+  else if (!recording && !lookThrough && mode !== 'deliver')
+    hint = t('ui.viewport.hints.navigation')
 
   return (
     <>
@@ -310,6 +334,7 @@ export function Viewport(): JSX.Element {
           {mode === 'shoot' && <ShotSizeRow />}
           {mode === 'shoot' && <FramingRow />}
           <GizmoModeRow />
+          <FlySpeedSlider />
           <div className="tool-row">
             <button
               className="btn small"

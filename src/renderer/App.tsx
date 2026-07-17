@@ -15,6 +15,7 @@ import { Timeline } from './panels/Timeline'
 import { DeliverPanel } from './panels/DeliverPanel'
 import { Toasts } from './panels/Toasts'
 import { HelpOverlay } from './panels/Help'
+import { CameraMarkDialog } from './panels/CameraMarkDialog'
 import { LocaleSwitch } from './components/LocaleSwitch'
 import logoUrl from './assets/logo.png'
 import { DISTRIBUTION } from '../shared/distribution'
@@ -188,6 +189,10 @@ function useKeyboard(): void {
           s.setHelpOpen(false)
           return
         }
+        if (s.cameraMarkDialog) {
+          s.setCameraMarkDialog(null)
+          return
+        }
         s.setPlacingAsset(null)
         s.setPlacingSequence(null)
         s.setDroppingMarks(false)
@@ -236,6 +241,7 @@ export function App(): JSX.Element {
         <Welcome />
         <Toasts />
         <HelpOverlay />
+        <CameraMarkDialog />
       </div>
     )
   }
@@ -299,6 +305,7 @@ export function App(): JSX.Element {
       )}
       <Toasts />
       <HelpOverlay />
+      <CameraMarkDialog />
     </div>
   )
 }

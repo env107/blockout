@@ -31,6 +31,14 @@ import { on } from '../bus'
 import { t } from '../../shared/i18n'
 import { cameraMoveLabel } from '../../shared/i18n/engine-labels'
 import { buildAsset, markMesh, labelSprite, type BuiltAsset } from './builders'
+import {
+  FlyNavigationInput,
+  applyLook,
+  applyMovement,
+  applyWheel,
+  lookAt,
+  syncOrbitTarget
+} from './flyNavigation'
 
 const RAD2DEG = 180 / Math.PI
 
@@ -61,9 +69,13 @@ export class SceneManager {
   readonly renderer: THREE.WebGLRenderer
   private canvas: HTMLCanvasElement
 
-  /** Free navigation camera. */
-  private freeCam: THREE.PerspectiveCamera
-  private controls: OrbitControls
+  /** Free navigation camera (Hammer-style fly in the editor view). */
+  readonly freeCam: THREE.PerspectiveCamera
+  readonly controls: OrbitControls
+  private flyNav = new FlyNavigationInput()
+  private flyNavPaused = false
+  /** Scales WASD/wheel while recording the camera (from RECORD_TUNING). */
+  private flyRecordSpeedScale = 1
   /** The shot camera — what gets exported. */
   readonly shotCam: THREE.PerspectiveCamera
 
@@ -146,7 +158,6 @@ export class SceneManager {
    *  of snapping to it, so recordings are controllable, not jittery. */
   private recCursor = new THREE.Vector3()
   private recPrevFrame = 0
-  private savedOrbitSpeeds: { rotate: number; pan: number; zoom: number } | null = null
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas
@@ -161,14 +172,16 @@ export class SceneManager {
 
     this.freeCam = new THREE.PerspectiveCamera(50, 16 / 9, 0.1, 500)
     this.freeCam.position.set(9, 7, 9)
+    this.freeCam.rotation.order = 'YXZ'
     this.shotCam = new THREE.PerspectiveCamera(35, 16 / 9, 0.05, 500)
     this.shotCam.rotation.order = 'YXZ'
 
     this.controls = new OrbitControls(this.freeCam, canvas)
-    this.controls.enableDamping = true
-    this.controls.dampingFactor = 0.12
-    this.controls.maxPolarAngle = Math.PI / 2 - 0.02
-    this.controls.target.set(0, 1, 0)
+    this.controls.enableRotate = false
+    this.controls.enablePan = false
+    this.controls.enableZoom = false
+    lookAt(this.freeCam, new THREE.Vector3(0, 1, 0))
+    syncOrbitTarget(this.freeCam, this.controls.target)
 
     // Ground: soft grid (editor chrome — lives in overlay so exports never
     // include it) + shadow-catching plane (stays: contact shadows read well)
@@ -221,6 +234,7 @@ export class SceneManager {
     this.transform.setRotationSnap(THREE.MathUtils.degToRad(15))
     this.transform.addEventListener('dragging-changed', (e) => {
       const dragging = (e as unknown as { value: boolean }).value
+      this.flyNavPaused = dragging
       this.controls.enabled = !dragging
       if (dragging) this.beginGizmoDrag()
       else this.commitGizmo()
@@ -229,8 +243,10 @@ export class SceneManager {
 
     canvas.addEventListener('pointerdown', this.onPointerDown)
     canvas.addEventListener('pointermove', this.onPointerMove)
+    canvas.addEventListener('pointerup', this.onPointerUp)
     canvas.addEventListener('wheel', this.onWheel, { passive: false })
     window.addEventListener('keydown', this.onKeyDown)
+    window.addEventListener('keyup', this.onKeyUp)
 
     // Store subscriptions: rebuild world on doc/scene/shot change.
     this.unsubscribers.push(
@@ -263,7 +279,8 @@ export class SceneManager {
         if (target) {
           const p = new THREE.Vector3()
           target.getWorldPosition(p)
-          this.controls.target.copy(p)
+          lookAt(this.freeCam, p)
+          syncOrbitTarget(this.freeCam, this.controls.target)
         }
       })
     )
@@ -283,8 +300,10 @@ export class SceneManager {
     this.unsubscribers.forEach((u) => u())
     this.canvas.removeEventListener('pointerdown', this.onPointerDown)
     this.canvas.removeEventListener('pointermove', this.onPointerMove)
+    this.canvas.removeEventListener('pointerup', this.onPointerUp)
     this.canvas.removeEventListener('wheel', this.onWheel)
     window.removeEventListener('keydown', this.onKeyDown)
+    window.removeEventListener('keyup', this.onKeyUp)
     this.controls.dispose()
     this.transform.dispose()
     this.renderer.dispose()
@@ -542,6 +561,53 @@ export class SceneManager {
     this.scene.fog = env.fog > 0.01 ? new THREE.FogExp2(p.bg, env.fog * 0.06) : null
   }
 
+  /* ------------------------------ fly navigation ------------------------ */
+
+  /** Point the editor camera from pos toward target (automation / e2e). */
+  lookAtFreeCam(pos: [number, number, number], target: [number, number, number]): void {
+    this.freeCam.position.set(pos[0], pos[1], pos[2])
+    lookAt(this.freeCam, { x: target[0], y: target[1], z: target[2] })
+    syncOrbitTarget(this.freeCam, this.controls.target)
+  }
+
+  private inputFocused(): boolean {
+    return (
+      document.activeElement instanceof HTMLInputElement ||
+      document.activeElement instanceof HTMLTextAreaElement
+    )
+  }
+
+  private flyNavEnabled(): boolean {
+    const s = this.currentState()
+    if (this.inputFocused()) return false
+    if (s.mode === 'deliver') return false
+    if (this.flyNavPaused) return false
+    if (s.recording && this.recTarget !== 'camera') return false
+    if (s.lookThrough && !(s.recording && this.recTarget === 'camera')) return false
+    return true
+  }
+
+  private applyFlyNavigation(dt: number): void {
+    if (!this.flyNavEnabled()) return
+    const s = this.currentState()
+    const speedScale =
+      s.recording && this.recTarget === 'camera' ? this.flyRecordSpeedScale : 1
+    applyMovement(
+      this.freeCam,
+      dt,
+      s.flyMoveSpeed,
+      this.flyNav.keysHeld,
+      speedScale,
+      this.flyNav.keysHeld.has('shift')
+    )
+    if (this.flyNav.isLooking) {
+      applyLook(this.freeCam, this.flyNav.lookDx, this.flyNav.lookDy)
+      this.flyNav.lookDx = 0
+      this.flyNav.lookDy = 0
+    }
+    syncOrbitTarget(this.freeCam, this.controls.target)
+  }
+
   /* ------------------------------ interaction --------------------------- */
 
   private pointerNdc(e: PointerEvent): THREE.Vector2 {
@@ -556,11 +622,17 @@ export class SceneManager {
    *  plate, a plane, or a chunk of collapsing building through the air. */
   private onWheel = (e: WheelEvent): void => {
     const s = this.currentState()
-    if (!s.recording || this.recTarget === 'camera') return // orbit zoom otherwise
+    if (s.recording && this.recTarget !== 'camera') {
+      e.preventDefault()
+      e.stopImmediatePropagation()
+      const tune = RECORD_TUNING[s.recordControl]
+      this.recHeight = Math.min(60, Math.max(0, this.recHeight - e.deltaY * tune.wheel))
+      return
+    }
+    if (!this.flyNavEnabled()) return
     e.preventDefault()
-    e.stopImmediatePropagation()
-    const tune = RECORD_TUNING[s.recordControl]
-    this.recHeight = Math.min(60, Math.max(0, this.recHeight - e.deltaY * tune.wheel))
+    applyWheel(this.freeCam, e.deltaY, s.flyMoveSpeed)
+    syncOrbitTarget(this.freeCam, this.controls.target)
   }
 
   private onPointerMove = (e: PointerEvent): void => {
@@ -569,16 +641,31 @@ export class SceneManager {
       ((e.clientX - rect.left) / rect.width) * 2 - 1,
       -((e.clientY - rect.top) / rect.height) * 2 + 1
     )
+    if (this.flyNav.pendingClick || this.flyNav.isLooking) {
+      this.flyNav.onPointerMove(e, this.canvas, this.flyNavEnabled())
+    }
   }
 
   private onPointerDown = (e: PointerEvent): void => {
     if (e.button !== 0) return
-    // Pointer is on the transform gizmo (axis set on hover) — the gizmo owns
-    // this interaction; running selection logic would detach it mid-grab.
     if (this.transform.dragging || this.transform.axis) return
     const s = this.currentState()
     if (s.mode === 'deliver') return
-    // While recording a performance, clicks must not change the selection.
+    if (s.recording && this.recTarget !== 'camera') return
+    this.flyNav.onPointerDown(e)
+  }
+
+  private onPointerUp = (e: PointerEvent): void => {
+    if (e.button !== 0) return
+    const click = this.flyNav.onPointerUp(e, this.canvas)
+    if (click) this.handlePointerClick(click)
+  }
+
+  /** Floor click: placement, mark drop, or selection (tap, not LMB drag). */
+  private handlePointerClick = (e: PointerEvent): void => {
+    if (this.transform.dragging || this.transform.axis) return
+    const s = this.currentState()
+    if (s.mode === 'deliver') return
     if (s.recording) return
     const ndc = this.pointerNdc(e)
     this.raycaster.setFromCamera(ndc, s.lookThrough ? this.shotCam : this.freeCam)
@@ -627,7 +714,28 @@ export class SceneManager {
       return
     }
 
-    // 3) Selection
+    // 3) Timeline mark picking (camera marks open the config dialog)
+    const markHits = this.raycaster.intersectObjects(this.markObjects, true)
+    const markHit = markHits.find((h) => !(h.object instanceof THREE.Sprite))
+    if (markHit) {
+      let o: THREE.Object3D | null = markHit.object
+      while (o) {
+        const markId = o.userData.markId as string | undefined
+        const entityId = o.userData.entityId as string | undefined
+        if (markId && entityId === 'camera') {
+          s.openCameraMarkDialog(markId)
+          return
+        }
+        if (markId && entityId) {
+          if (e.shiftKey) s.toggleMarkSelected(entityId, markId)
+          else s.setSelection({ kind: 'mark', entityId, markId })
+          return
+        }
+        o = o.parent
+      }
+    }
+
+    // 4) Selection
     const pickables: THREE.Object3D[] = []
     for (const v of this.visuals.values()) pickables.push(v.root)
     pickables.push(this.cameraBody)
@@ -657,9 +765,12 @@ export class SceneManager {
   }
 
   private onKeyDown = (e: KeyboardEvent): void => {
-    const inField =
-      document.activeElement instanceof HTMLInputElement ||
-      document.activeElement instanceof HTMLTextAreaElement
+    const inField = this.inputFocused()
+    if (!inField && !e.metaKey && !e.ctrlKey && this.flyNav.isMovementKey(e.key)) {
+      if (this.flyNavEnabled()) e.preventDefault()
+      this.flyNav.onKeyDown(e.key)
+    }
+    if (e.key === 'Shift') this.flyNav.onKeyDown('shift')
     if (inField) return
     if (e.key === 'g' || e.key === 'G') this.setGizmoMode('translate')
     if (e.key === 'r' || e.key === 'R') this.setGizmoMode('rotate')
@@ -690,6 +801,11 @@ export class SceneManager {
       if (sel?.kind === 'mark' || sel?.kind === 'marks') s.deleteSelectedMarks()
       else this.deleteSelection()
     }
+  }
+
+  private onKeyUp = (e: KeyboardEvent): void => {
+    if (this.flyNav.isMovementKey(e.key)) this.flyNav.onKeyUp(e.key)
+    if (e.key === 'Shift') this.flyNav.onKeyUp('shift')
   }
 
   private groundHit(): THREE.Vector3 | null {
@@ -1454,24 +1570,11 @@ export class SceneManager {
     const s = this.currentState()
     const tune = RECORD_TUNING[s.recordControl]
 
-    // Tame the viewport controls while recording — Precise mode flies the
-    // camera at a fraction of editing speed and adds damping so moves land
-    // where you intend them.
-    this.savedOrbitSpeeds = {
-      rotate: this.controls.rotateSpeed,
-      pan: this.controls.panSpeed,
-      zoom: this.controls.zoomSpeed
-    }
-    this.controls.rotateSpeed = tune.orbit
-    this.controls.panSpeed = tune.orbit
-    this.controls.zoomSpeed = tune.orbit
-    this.controls.enableDamping = true
-    this.controls.dampingFactor = tune.damping
-
     // Target: a single selected entity means "record ITS move" (puppeteer
     // with the cursor); anything else records the camera.
     const ids = selectedEntityIds(s.selection)
     this.recTarget = ids.length === 1 ? ids[0]! : 'camera'
+    this.flyRecordSpeedScale = this.recTarget === 'camera' ? tune.orbit : 1
 
     // Playback-synced when there is other motion to perform against — the
     // existing choreography replays while you record, so a camera flight
@@ -1504,7 +1607,6 @@ export class SceneManager {
       const startPos = this.visuals.get(this.recTarget)?.root.position
       this.recHeight = startPos?.y ?? 0
       this.recCursor.copy(startPos ?? new THREE.Vector3())
-      this.controls.enableZoom = false // wheel = altitude while puppeteering
       s.toast(
         this.recPlaybackSynced
           ? t('toasts.recordingPerformerPlaybackSync')
@@ -1517,14 +1619,7 @@ export class SceneManager {
   private finishRecording(): void {
     const s = this.currentState()
     s.setPlaying(false)
-    this.controls.enableZoom = true
-    this.controls.enableDamping = false
-    if (this.savedOrbitSpeeds) {
-      this.controls.rotateSpeed = this.savedOrbitSpeeds.rotate
-      this.controls.panSpeed = this.savedOrbitSpeeds.pan
-      this.controls.zoomSpeed = this.savedOrbitSpeeds.zoom
-      this.savedOrbitSpeeds = null
-    }
+    this.flyRecordSpeedScale = 1
     if (this.recTarget !== 'camera') {
       this.finishEntityRecording()
       return
@@ -1793,7 +1888,7 @@ export class SceneManager {
       s.setTime(t)
     }
     this.applyTime(s.time)
-    this.controls.update()
+    this.applyFlyNavigation(dt)
 
     // Live recording. Playback-synced recordings sample against the shot
     // clock (the choreography replays underneath); free recordings run on

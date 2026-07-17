@@ -120,7 +120,7 @@ export const uiEn = {
           q7: 'How do I have someone board a bus or get off a plane?',
           a7: 'Select an actor\'s last mark and set <b>Board on arrival → the Bus</b>. To alight, marry them to a parked plane, then give them marks that start after it lands.',
           q8: 'How do I retime or delete a move on the timeline?',
-          a8: 'Drag a pill to retime it, drag its right edge to add a hold, and double-click to delete. <kbd>⇧</kbd>-click to multi-select pills.',
+          a8: 'Drag a pill to retime it, drag its right edge to add a hold. Click a <b>camera</b> pill to edit its settings, or press <kbd>Delete</kbd> to remove selected marks. <kbd>⇧</kbd>-click to multi-select pills.',
           q9: 'How do I make a whole choreographed group at once?',
           a9: 'In Stage, the <b>Sequences</b> box stages a full cast: Dance number, Fight, Foot chase, or Car chase. Set the count and style, and it drops them already choreographed.'
         }
@@ -463,6 +463,11 @@ export const uiEn = {
       resetPoseAtMark: 'Reset pose at this mark'
     }
   },
+  cameraMarkDialog: {
+    title: 'Camera keyframe {{index}} — {{time}}s',
+    close: 'Close',
+    delete: 'Delete keyframe'
+  },
   timeline: {
     resizeTitle: 'Drag to resize the timeline',
     camera: '🎥 CAMERA',
@@ -578,6 +583,11 @@ export const uiEn = {
       title:
         'Recording control: Precise = heavy smoothing + speed cap (slow, exact moves), Normal = balanced, Fast = raw and quick. Applies to performer puppeteering AND camera flying. Click to cycle.'
     },
+    flySpeed: {
+      label: 'Speed',
+      title: 'Viewport fly speed — WASD movement and scroll-wheel dolly',
+      value: '{{value}} m/s'
+    },
     framing: {
       twoShot: '2-SHOT',
       twoShotTitle:
@@ -631,7 +641,9 @@ export const uiEn = {
         '{{count}} selected — drag moves the group · Marry in the inspector · ⌫ deletes all',
       recordingPerformer:
         '● REC — move the cursor over the floor; the performer chases it. ■ Stop saves the performance.',
-      recordingCamera: '● REC — fly the view (orbit/pan/zoom); this is the shot. ■ Stop saves the move.'
+      recordingCamera:
+        '● REC — fly with WASD, look with LMB drag, dolly with wheel; this is the shot. ■ Stop saves the move.',
+      navigation: 'WASD move · QE up/down · Shift faster · LMB drag look · wheel dolly'
     },
     shotPreview: {
       label: 'SHOT PREVIEW',

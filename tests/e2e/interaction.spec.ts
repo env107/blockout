@@ -108,11 +108,13 @@ test('camera-move recording converts flight into camera marks', async () => {
     return store.shot().camera.marks.length
   })
   await page.getByRole('button', { name: '● Record camera' }).click()
-  // Fly: orbit-drag the viewport for ~1.5s
+  // Fly: WASD + LMB look for ~1.5s
   const canvas = page.locator('.viewport-wrap canvas')
   const box = (await canvas.boundingBox())!
   const cx = box.x + box.width / 2
   const cy = box.y + box.height / 2
+  await canvas.click()
+  await page.keyboard.down('w')
   await page.mouse.move(cx, cy)
   await page.mouse.down()
   for (let i = 1; i <= 15; i++) {
@@ -120,6 +122,7 @@ test('camera-move recording converts flight into camera marks', async () => {
     await page.waitForTimeout(80)
   }
   await page.mouse.up()
+  await page.keyboard.up('w')
   await page.waitForTimeout(300)
   await page.getByRole('button', { name: '■ Stop' }).click()
   await page.waitForTimeout(400)
@@ -148,8 +151,7 @@ test('dragging the camera body commits to a camera mark', async () => {
       shot.camera.marks[0].position = { x: 0, y: 1.5, z: 0 }
     })
     const sm = (window as any).__blockout_scene
-    sm.freeCam.position.set(9, 7, 9)
-    sm.controls.target.set(0, 1, 0)
+    sm.lookAtFreeCam([9, 7, 9], [0, 1, 0])
     store.setPipSize('off') // PiP chrome must not sit under the probe grid
     store.setSelection({ kind: 'camera' })
     store.setTime(0)
@@ -222,6 +224,70 @@ test('credits with site links render in-app', async () => {
   await expect(page.getByText('Created by Sam Wasserman')).toBeVisible()
   await expect(page.getByText('wassermanproductions.com')).toBeVisible()
   await expect(page.getByText('wasserman.ai')).toBeVisible()
+})
+
+test('camera keyframe dialog: edit, delete, and no double-click delete', async () => {
+  await page.evaluate(() => {
+    const store = (window as any).__blockout.store.getState()
+    store.setMode('shoot')
+    store.setSelection({ kind: 'camera' })
+    store.mutate('reset camera marks', (doc: any) => {
+      const shot = doc.scenes[0].shots[0]
+      shot.camera.marks = []
+    })
+    store.dropCameraMark({ x: 2, y: 1.6, z: 2 }, 0, 0, 35)
+    store.dropCameraMark({ x: -2, y: 1.6, z: -2 }, 0.5, 0, 50)
+  })
+  await page.waitForTimeout(400)
+
+  const beforeCount = await page.evaluate(() => {
+    return (window as any).__blockout.store.getState().shot().camera.marks.length
+  })
+  expect(beforeCount).toBe(2)
+
+  await page.locator('[data-testid="camera-mark-pill"]').first().click()
+  await expect(page.locator('[data-testid="camera-mark-dialog"]')).toBeVisible()
+
+  await page.locator('[data-testid="camera-mark-dialog"] button', { hasText: '85' }).click()
+  await page.waitForTimeout(200)
+
+  const focal = await page.evaluate(() => {
+    const marks = (window as any).__blockout.store.getState().shot().camera.marks
+    return [...marks].sort((a: any, b: any) => a.time - b.time)[0].focalLength
+  })
+  expect(focal).toBe(85)
+
+  await page.locator('[data-testid="camera-mark-pill"]').first().dblclick()
+  await page.waitForTimeout(200)
+  const afterDblClick = await page.evaluate(() => {
+    return (window as any).__blockout.store.getState().shot().camera.marks.length
+  })
+  expect(afterDblClick).toBe(2)
+
+  await page.getByRole('button', { name: 'Delete keyframe' }).click()
+  await page.waitForTimeout(200)
+  await expect(page.locator('[data-testid="camera-mark-dialog"]')).not.toBeVisible()
+  const afterDelete = await page.evaluate(() => {
+    return (window as any).__blockout.store.getState().shot().camera.marks.length
+  })
+  expect(afterDelete).toBe(1)
+})
+
+test('camera keyframe dialog opens from store (3D pick fallback)', async () => {
+  const markId = await page.evaluate(() => {
+    const store = (window as any).__blockout.store.getState()
+    const id = store.shot().camera.marks[0].id
+    store.openCameraMarkDialog(id)
+    return id
+  })
+  await page.waitForTimeout(200)
+  await expect(page.locator('[data-testid="camera-mark-dialog"]')).toBeVisible()
+  const scrubbed = await page.evaluate(() => (window as any).__blockout.store.getState().time)
+  expect(scrubbed).toBeGreaterThanOrEqual(0)
+  expect(markId).toBeTruthy()
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(150)
+  await expect(page.locator('[data-testid="camera-mark-dialog"]')).not.toBeVisible()
 })
 
 test('analyzeReference IPC wiring returns a structured error without credentials', async () => {

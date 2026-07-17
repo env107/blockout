@@ -120,7 +120,7 @@ export const uiZhCN = {
           q7: '如何让某人上公交或下飞机？',
           a7: '选中演员最后一个标记，设置<b>到达后登车 → 公交车</b>。要下车，将他们绑定到停放的飞机，然后给出在着陆后的标记。',
           q8: '如何在时间轴上调整时间或删除动作？',
-          a8: '拖动药丸调整时间，拖动右边缘添加停留，双击删除。<kbd>⇧</kbd>-点击可多选药丸。',
+          a8: '拖动药丸调整时间，拖动右边缘添加停留。单击<b>摄像机</b>药丸可编辑参数，或按 <kbd>Delete</kbd> 删除选中标记。<kbd>⇧</kbd>-点击可多选药丸。',
           q9: '如何一次性创建整群编排？',
           a9: '在布置模式下，<b>序列</b>框可布置完整阵容：舞蹈、打斗、步行追逐或汽车追逐。设置数量和风格，即可放置已编排好的群组。'
         }
@@ -453,6 +453,11 @@ export const uiZhCN = {
       resetPoseAtMark: '重置此标记姿态'
     }
   },
+  cameraMarkDialog: {
+    title: '摄像机关键帧 {{index}} — {{time}}s',
+    close: '关闭',
+    delete: '删除关键帧'
+  },
   timeline: {
     resizeTitle: '拖动调整时间轴大小',
     camera: '🎥 摄像机',
@@ -564,6 +569,11 @@ export const uiZhCN = {
       title:
         '录制控制：精确 = 重度平滑 + 速度上限（慢而精确），正常 = 平衡，快速 = 原始快速。适用于表演者操控和摄像机飞行。点击切换。'
     },
+    flySpeed: {
+      label: '移动速度',
+      title: '视口飞行速度 — WASD 移动与滚轮推拉',
+      value: '{{value}} m/s'
+    },
     framing: {
       twoShot: '双人',
       twoShotTitle: '双人镜头：并排容纳两个角色（选 3–4 个为群镜头）',
@@ -608,7 +618,9 @@ export const uiZhCN = {
       droppingMarksCamera: '点击地面放置镜头标记 · 或使用「在当前视图放置镜头标记」',
       multiSelect: '已选 {{count}} 个 — 拖动移动整组 · 在检查器中绑定 · ⌫ 全部删除',
       recordingPerformer: '● 录制中 — 将光标移到地面上；表演者跟随。■ 停止保存表演。',
-      recordingCamera: '● 录制中 — 操控视图（环绕/平移/缩放）；这就是镜头。■ 停止保存运动。'
+      recordingCamera:
+        '● 录制中 — WASD 移动、左键拖拽环顾、滚轮推拉；这就是镜头。■ 停止保存运动。',
+      navigation: 'WASD 移动 · QE 升降 · Shift 加速 · 左键拖拽环顾 · 滚轮推拉'
     },
     shotPreview: {
       label: '镜头预览',
